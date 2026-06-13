@@ -10,6 +10,7 @@ export type CategoryId =
   | "prestamo"
   | "suscripcion"
   | "hogar"
+  | "carro"
   | "personal"
   | "otro";
 

@@ -7,6 +7,7 @@ export const CATEGORIES: Category[] = [
   { id: "prestamo", label: "Préstamo", color: "#fb923c", icon: "Landmark" },
   { id: "suscripcion", label: "Suscripción", color: "#a78bfa", icon: "Repeat" },
   { id: "hogar", label: "Hogar", color: "#34d399", icon: "Home" },
+  { id: "carro", label: "Carro", color: "#60a5fa", icon: "Car" },
   { id: "personal", label: "Personal", color: "#facc15", icon: "User" },
   { id: "otro", label: "Otro", color: "#94a3b8", icon: "Tag" },
 ];
