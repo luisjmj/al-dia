@@ -66,7 +66,11 @@ export default function InstallmentDetail({
           <Summary
             label="Interés total"
             value={formatCOP(amort.totalInterest)}
-            sub={amort.rate > 0 ? `${(amort.rate * 100).toFixed(2)}% mensual` : "sin interés"}
+            sub={
+              debt.interestRate && debt.interestRate > 0
+                ? `${debt.interestRate}% E.A. (${(amort.rate * 100).toFixed(2)}% mes)`
+                : "sin interés"
+            }
             icon={<TrendingDown className="w-4 h-4" />}
             accent="#f472b6"
           />

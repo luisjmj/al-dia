@@ -136,7 +136,7 @@ export default function Debts() {
 
                 <div className="text-xs text-muted">
                   Titular: {owner?.name ?? "—"} · vence día {d.dueDay}
-                  {d.interestRate ? ` · ${d.interestRate}% mensual` : ""}
+                  {d.interestRate ? ` · ${d.interestRate}% E.A.` : ""}
                 </div>
               </div>
             );

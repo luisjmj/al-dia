@@ -37,7 +37,7 @@ export interface Debt {
   dueDay: number; // día del mes (1-31)
   startDate: string; // ISO yyyy-mm-dd
   installmentsTotal?: number; // solo para "installments"
-  interestRate?: number; // % mensual opcional
+  interestRate?: number; // % efectivo anual (E.A.) opcional; se convierte a mensual en lib/amortization
   variable?: boolean; // monto cambia cada mes (ej. servicios); `amount` es solo un estimado
   shared: boolean; // visible/pagable por la pareja
   ownerId: string;

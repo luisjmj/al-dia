@@ -72,8 +72,14 @@ export function payoff(
   return { count, totalInterest: interest, totalPaid: paid };
 }
 
+// Convierte una tasa efectiva anual (E.A., en %) a tasa mensual (decimal).
+export function eaToMonthly(eaPercent: number): number {
+  if (!eaPercent || eaPercent <= 0) return 0;
+  return Math.pow(1 + eaPercent / 100, 1 / 12) - 1;
+}
+
 export function buildAmortization(debt: Debt, payments: Payment[]): Amortization {
-  const i = (debt.interestRate ?? 0) / 100;
+  const i = eaToMonthly(debt.interestRate ?? 0);
   const cuota = debt.amount;
   const n = debt.installmentsTotal ?? 0;
   const principal = principalFromCuota(cuota, i, n);

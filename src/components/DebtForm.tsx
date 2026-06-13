@@ -206,11 +206,11 @@ export default function DebtForm({
             />
           </div>
           <div>
-            <label className="label">Interés mensual %</label>
+            <label className="label">Interés % E.A.</label>
             <input
               className="input"
               inputMode="decimal"
-              placeholder="opcional"
+              placeholder="ej. 24 (anual)"
               value={interestRate}
               onChange={(ev) =>
                 setInterestRate(ev.target.value.replace(/[^\d.]/g, ""))
@@ -218,6 +218,18 @@ export default function DebtForm({
             />
           </div>
         </div>
+        {interestRate && Number(interestRate) > 0 && (
+          <div className="-mt-2 text-xs text-muted">
+            {interestRate}% efectivo anual ≈{" "}
+            <span className="text-text font-medium">
+              {(
+                (Math.pow(1 + Number(interestRate) / 100, 1 / 12) - 1) *
+                100
+              ).toFixed(2)}
+              % mensual
+            </span>
+          </div>
+        )}
 
         <div>
           <label className="label">Nota</label>
