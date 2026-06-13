@@ -1,0 +1,79 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme */
+  --bg: 244 245 248;
+  --surface: 255 255 255;
+  --surface-2: 248 249 252;
+  --border: 226 230 237;
+  --text: 17 24 39;
+  --muted: 107 114 128;
+  --brand: 99 102 241;
+  --brand-soft: 224 225 255;
+}
+
+.dark {
+  /* Dark theme (default) */
+  --bg: 10 12 18;
+  --surface: 21 24 33;
+  --surface-2: 28 32 44;
+  --border: 39 44 58;
+  --text: 237 240 247;
+  --muted: 148 156 173;
+  --brand: 129 132 248;
+  --brand-soft: 39 38 74;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text));
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 99px;
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-2xl;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:opacity-90 px-4 py-2.5;
+  }
+  .btn-ghost {
+    @apply btn bg-surface-2 text-text hover:bg-border px-4 py-2.5;
+  }
+  .input {
+    @apply w-full bg-surface-2 border border-border rounded-xl px-3.5 py-2.5 text-text placeholder:text-muted outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand transition;
+  }
+  .label {
+    @apply block text-sm font-medium text-muted mb-1.5;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+}
