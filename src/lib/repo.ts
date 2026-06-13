@@ -59,6 +59,7 @@ function rowToPayment(r: any): Payment {
     amount: Number(r.amount),
     paidById: r.paid_by,
     paidAt: r.paid_at,
+    type: r.type ?? "cuota",
   };
 }
 
@@ -168,17 +169,22 @@ export async function insertPayment(
   householdId: string,
   period: string,
   amount: number,
-  paidBy: string
+  paidBy: string,
+  type: "cuota" | "abono" = "cuota"
 ): Promise<Payment> {
+  const row: Record<string, unknown> = {
+    debt_id: debtId,
+    household_id: householdId,
+    period,
+    amount,
+    paid_by: paidBy,
+  };
+  // Solo enviamos `type` para abonos: así los pagos normales siguen
+  // funcionando aunque la columna aún no exista (migración pendiente).
+  if (type === "abono") row.type = "abono";
   const { data, error } = await sb()
     .from("payments")
-    .insert({
-      debt_id: debtId,
-      household_id: householdId,
-      period,
-      amount,
-      paid_by: paidBy,
-    })
+    .insert(row)
     .select()
     .single();
   if (error) throw error;

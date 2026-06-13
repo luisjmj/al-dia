@@ -10,6 +10,7 @@ import { Ctx, type Store, loadTheme, saveTheme } from "./store";
 import { useAuth } from "./auth";
 import * as repo from "./lib/repo";
 import { paidInPeriod, expectedAmount } from "./lib/finance";
+import { currentPeriod } from "./lib/format";
 
 export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
   const { userId, signOut } = useAuth();
@@ -101,6 +102,19 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
           );
           setPayments((xs) => [...xs, created]);
         }
+      },
+      abonarCapital: async (debt, amount) => {
+        if (!household || !userId) return;
+        const period = currentPeriod();
+        const created = await repo.insertPayment(
+          debt.id,
+          household.id,
+          period,
+          amount,
+          userId,
+          "abono"
+        );
+        setPayments((xs) => [...xs, created]);
       },
       resetData: () => refresh(),
       signOut,

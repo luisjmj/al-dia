@@ -9,12 +9,22 @@ import {
 import { currentPeriod, formatCOP } from "../lib/format";
 import { CategoryBadge, ProgressBar, EmptyState } from "../components/ui";
 import DebtForm from "../components/DebtForm";
-import { Plus, Pencil, Archive, Users, Repeat, Coins } from "lucide-react";
+import InstallmentDetail from "../components/InstallmentDetail";
+import {
+  Plus,
+  Pencil,
+  Archive,
+  Users,
+  Repeat,
+  Coins,
+  ListTree,
+} from "lucide-react";
 
 export default function Debts() {
   const { debts, payments, archiveDebt, users } = useStore();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Debt | null>(null);
+  const [detail, setDetail] = useState<Debt | null>(null);
   const period = currentPeriod();
 
   const visible = debts.filter((d) => !d.archived);
@@ -115,6 +125,12 @@ export default function Debts() {
                       <span>{Math.round((paidCount / total) * 100)}%</span>
                     </div>
                     <ProgressBar value={paidCount / total} color={d.color} />
+                    <button
+                      onClick={() => setDetail(d)}
+                      className="mt-2.5 w-full btn-ghost !py-2 text-sm"
+                    >
+                      <ListTree className="w-4 h-4" /> Ver detalle y abonos
+                    </button>
                   </div>
                 )}
 
@@ -130,6 +146,9 @@ export default function Debts() {
 
       {open && (
         <DebtForm open onClose={() => setOpen(false)} editing={editing} />
+      )}
+      {detail && (
+        <InstallmentDetail debt={detail} onClose={() => setDetail(null)} />
       )}
     </div>
   );

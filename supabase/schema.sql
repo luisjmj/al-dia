@@ -57,6 +57,7 @@ create table if not exists public.payments (
   household_id uuid not null references public.households on delete cascade,
   period       text not null,          -- 'yyyy-mm'
   amount       numeric not null,
+  type         text not null default 'cuota',  -- 'cuota' | 'abono' (abono a capital)
   paid_by      uuid not null references auth.users,
   paid_at      timestamptz default now()
 );

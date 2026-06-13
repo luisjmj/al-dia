@@ -54,4 +54,5 @@ export interface Payment {
   amount: number; // monto pagado (permite pago parcial)
   paidById: string;
   paidAt: string; // ISO datetime
+  type?: "cuota" | "abono"; // 'cuota' = pago regular; 'abono' = abono extra a capital
 }

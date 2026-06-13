@@ -51,6 +51,8 @@ export interface Store {
   archiveDebt: (id: string) => void;
   // marcar / desmarcar pago del mes (toggle) con monto opcional (pago parcial)
   togglePayment: (debt: Debt, period: string, amount?: number) => void;
+  // abono extra a capital en una deuda a cuotas
+  abonarCapital: (debt: Debt, amount: number) => void;
   resetData: () => void;
   // solo modo supabase (opcionales)
   household?: { id: string; name: string; inviteCode: string };
@@ -138,6 +140,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             amount: amount ?? expectedAmount(debt, period),
             paidById: state.currentUserId,
             paidAt: new Date().toISOString(),
+            type: "cuota",
+          };
+          return { ...s, payments: [...s.payments, pay] };
+        }),
+      abonarCapital: (debt, amount) =>
+        setState((s) => {
+          const now = new Date();
+          const period = `${now.getFullYear()}-${String(
+            now.getMonth() + 1
+          ).padStart(2, "0")}`;
+          const pay: Payment = {
+            id: `p_${crypto.randomUUID()}`,
+            debtId: debt.id,
+            period,
+            amount,
+            paidById: state.currentUserId,
+            paidAt: now.toISOString(),
+            type: "abono",
           };
           return { ...s, payments: [...s.payments, pay] };
         }),

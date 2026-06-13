@@ -39,16 +39,10 @@ export function expectedAmount(
     return debt.amount; // estimado del usuario
   }
 
-  const startPeriod = debt.startDate.slice(0, 7);
-  const elapsed = Math.max(0, monthsBetween(startPeriod, period));
-
+  // Cuotas: la cuota es fija (el interés va dentro de ella, ver lib/amortization).
   let base = debt.amount;
   if (debt.frequency === "biweekly") base = debt.amount * 2;
   if (debt.frequency === "weekly") base = debt.amount * 4;
-
-  if (debt.interestRate && debt.interestRate > 0) {
-    base = base * Math.pow(1 + debt.interestRate / 100, elapsed);
-  }
   return base;
 }
 
@@ -59,9 +53,11 @@ export function avgActualForDebt(debtId: string, payments: Payment[]): number {
   return ps.reduce((s, p) => s + p.amount, 0) / ps.length;
 }
 
-// Cuotas pagadas de una deuda a cuotas.
+// Cuotas pagadas de una deuda a cuotas (los abonos a capital no cuentan como cuota).
 export function installmentsPaid(debt: Debt, payments: Payment[]): number {
-  return payments.filter((p) => p.debtId === debt.id).length;
+  return payments.filter(
+    (p) => p.debtId === debt.id && p.type !== "abono"
+  ).length;
 }
 
 // ¿Cuánto se ha pagado de una deuda en un periodo?
