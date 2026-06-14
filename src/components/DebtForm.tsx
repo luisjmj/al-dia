@@ -3,7 +3,17 @@ import type { Debt, DebtKind, Frequency, CategoryId } from "../types";
 import { CATEGORIES } from "../lib/seed";
 import { Modal } from "./ui";
 import { useStore } from "../store";
+import { eaToMonthly, principalFromCuota } from "../lib/amortization";
+import { formatCOP } from "../lib/format";
 import { Repeat, CalendarClock, Coins } from "lucide-react";
+
+// Cuota mensual (sistema francés) a partir del total financiado.
+function cuotaFromTotal(total: number, eaPercent: number, n: number): number {
+  if (n <= 0) return 0;
+  const i = eaToMonthly(eaPercent);
+  if (i <= 0) return total / n;
+  return (total * i) / (1 - Math.pow(1 + i, -n));
+}
 
 const KIND_OPTS: { id: DebtKind; label: string; desc: string; icon: any }[] = [
   { id: "recurring", label: "Recurrente", desc: "Sin fecha fin", icon: Repeat },
@@ -34,7 +44,23 @@ export default function DebtForm({
   const e = editing;
 
   const [name, setName] = useState(e?.name ?? "");
-  const [amount, setAmount] = useState<string>(e ? String(e.amount) : "");
+  // Para créditos a cuotas el campo guarda el TOTAL; al editar lo reconstruimos
+  // desde la cuota almacenada.
+  const [amount, setAmount] = useState<string>(() => {
+    if (!e) return "";
+    if (e.kind === "installments") {
+      // mostramos el total: el guardado (principal) o el reconstruido desde la cuota
+      const total =
+        e.principal ??
+        principalFromCuota(
+          e.amount,
+          eaToMonthly(e.interestRate ?? 0),
+          e.installmentsTotal ?? 0
+        );
+      return String(Math.round(total));
+    }
+    return String(e.amount);
+  });
   const [kind, setKind] = useState<DebtKind>(e?.kind ?? "recurring");
   const [frequency, setFrequency] = useState<Frequency>(e?.frequency ?? "monthly");
   const [category, setCategory] = useState<CategoryId>(e?.category ?? "servicios");
@@ -49,15 +75,29 @@ export default function DebtForm({
   const [variable, setVariable] = useState(e?.variable ?? false);
   const [shared, setShared] = useState(e?.shared ?? false);
   const [note, setNote] = useState(e?.note ?? "");
+  const [url, setUrl] = useState(e?.url ?? "");
 
   const cat = CATEGORIES.find((c) => c.id === category)!;
   const valid = name.trim() && Number(amount) > 0;
+
+  // Para créditos: el campo es el TOTAL; la cuota mensual se calcula.
+  const isInstallments = kind === "installments";
+  const cuotaMensual = isInstallments
+    ? cuotaFromTotal(
+        Number(amount) || 0,
+        Number(interestRate) || 0,
+        Number(installmentsTotal) || 0
+      )
+    : 0;
 
   function submit() {
     if (!valid) return;
     const base: Omit<Debt, "id"> = {
       name: name.trim(),
-      amount: Number(amount),
+      // créditos guardan la cuota mensual calculada; el resto, el monto tal cual
+      amount: isInstallments ? Math.round(cuotaMensual) : Number(amount),
+      // total financiado original (solo créditos a cuotas)
+      principal: isInstallments ? Number(amount) : undefined,
       kind,
       frequency,
       category,
@@ -71,6 +111,7 @@ export default function DebtForm({
       ownerId: e?.ownerId ?? currentUser.id,
       color: cat.color,
       note: note.trim() || undefined,
+      url: url.trim() || undefined,
       archived: e?.archived,
     };
     if (e) updateDebt({ ...base, id: e.id });
@@ -95,12 +136,16 @@ export default function DebtForm({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">
-              {variable ? "Monto estimado (COP)" : "Monto (COP)"}
+              {isInstallments
+                ? "Valor total (COP)"
+                : variable
+                ? "Monto estimado (COP)"
+                : "Monto (COP)"}
             </label>
             <input
               className="input"
               inputMode="numeric"
-              placeholder="150000"
+              placeholder={isInstallments ? "Total del crédito" : "150000"}
               value={amount}
               onChange={(ev) => setAmount(ev.target.value.replace(/\D/g, ""))}
             />
@@ -151,6 +196,12 @@ export default function DebtForm({
                 setInstallmentsTotal(ev.target.value.replace(/\D/g, ""))
               }
             />
+            {cuotaMensual > 0 && (
+              <div className="mt-2 rounded-xl bg-surface-2 px-3 py-2 text-sm flex items-center justify-between">
+                <span className="text-muted">Cuota mensual</span>
+                <span className="font-bold">{formatCOP(cuotaMensual)}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -239,6 +290,20 @@ export default function DebtForm({
             value={note}
             onChange={(ev) => setNote(ev.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="label">Enlace para pagar (URL)</label>
+          <input
+            className="input"
+            inputMode="url"
+            placeholder="ej. https://www.bancolombia.com"
+            value={url}
+            onChange={(ev) => setUrl(ev.target.value)}
+          />
+          <p className="text-[11px] text-muted mt-1">
+            Opcional. Aparece un botón para ir directo al sitio de pago.
+          </p>
         </div>
 
         {/* Monto variable */}

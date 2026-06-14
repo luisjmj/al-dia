@@ -20,18 +20,20 @@ function rowToDebt(r: any): Debt {
     dueDay: r.due_day,
     startDate: r.start_date,
     installmentsTotal: r.installments_total ?? undefined,
+    principal: r.principal != null ? Number(r.principal) : undefined,
     interestRate: r.interest_rate != null ? Number(r.interest_rate) : undefined,
     variable: r.variable ?? false,
     shared: r.shared,
     ownerId: r.owner_id,
     color: r.color,
     note: r.note ?? undefined,
+    url: r.url ?? undefined,
     archived: r.archived,
   };
 }
 
 function debtToRow(d: Omit<Debt, "id">, householdId: string) {
-  return {
+  const row: Record<string, unknown> = {
     household_id: householdId,
     owner_id: d.ownerId,
     name: d.name,
@@ -49,6 +51,12 @@ function debtToRow(d: Omit<Debt, "id">, householdId: string) {
     note: d.note ?? null,
     archived: d.archived ?? false,
   };
+  // Solo enviamos `principal` cuando aplica (créditos), así crear deudas
+  // normales sigue funcionando aunque la columna aún no exista (migración 003).
+  if (d.principal != null) row.principal = d.principal;
+  // `url` solo si existe (columna de migración 004).
+  if (d.url) row.url = d.url;
+  return row;
 }
 
 function rowToPayment(r: any): Payment {
@@ -161,6 +169,20 @@ export async function archiveDebt(id: string): Promise<void> {
     .from("debts")
     .update({ archived: true })
     .eq("id", id);
+  if (error) throw error;
+}
+
+export async function unarchiveDebt(id: string): Promise<void> {
+  const { error } = await sb()
+    .from("debts")
+    .update({ archived: false })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+// Borrado real (los pagos asociados se eliminan en cascada en la BD).
+export async function deleteDebt(id: string): Promise<void> {
+  const { error } = await sb().from("debts").delete().eq("id", id);
   if (error) throw error;
 }
 

@@ -6,10 +6,11 @@ import {
   installmentsPaid,
   isDebtActiveIn,
 } from "../lib/finance";
-import { currentPeriod, formatCOP } from "../lib/format";
+import { currentPeriod, formatCOP, externalUrl } from "../lib/format";
 import { CategoryBadge, ProgressBar, EmptyState } from "../components/ui";
 import DebtForm from "../components/DebtForm";
 import InstallmentDetail from "../components/InstallmentDetail";
+import ArchivedDebts from "../components/ArchivedDebts";
 import {
   Plus,
   Pencil,
@@ -18,6 +19,7 @@ import {
   Repeat,
   Coins,
   ListTree,
+  ExternalLink,
 } from "lucide-react";
 
 export default function Debts() {
@@ -25,9 +27,11 @@ export default function Debts() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Debt | null>(null);
   const [detail, setDetail] = useState<Debt | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const period = currentPeriod();
 
   const visible = debts.filter((d) => !d.archived);
+  const archivedCount = debts.filter((d) => d.archived).length;
 
   function edit(d: Debt) {
     setEditing(d);
@@ -42,9 +46,21 @@ export default function Debts() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold tracking-tight">Mis deudas</h1>
-        <button className="btn-primary" onClick={create}>
-          <Plus className="w-4.5 h-4.5" /> Nueva
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="btn-ghost !px-3"
+            onClick={() => setShowArchived(true)}
+            title="Deudas archivadas"
+          >
+            <Archive className="w-4.5 h-4.5" />
+            {archivedCount > 0 && (
+              <span className="text-xs font-bold">{archivedCount}</span>
+            )}
+          </button>
+          <button className="btn-primary" onClick={create}>
+            <Plus className="w-4.5 h-4.5" /> Nueva
+          </button>
+        </div>
       </div>
 
       {visible.length === 0 ? (
@@ -76,6 +92,17 @@ export default function Debts() {
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    {d.url && (
+                      <a
+                        href={externalUrl(d.url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Ir a pagar"
+                        className="p-2 rounded-lg text-brand hover:bg-brand-soft"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
                     <button
                       onClick={() => edit(d)}
                       className="p-2 rounded-lg text-muted hover:bg-surface-2 hover:text-text"
@@ -150,6 +177,7 @@ export default function Debts() {
       {detail && (
         <InstallmentDetail debt={detail} onClose={() => setDetail(null)} />
       )}
+      {showArchived && <ArchivedDebts onClose={() => setShowArchived(false)} />}
     </div>
   );
 }

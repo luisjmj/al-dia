@@ -46,6 +46,12 @@ export function addMonths(period: string, n: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// Asegura que la URL tenga protocolo para abrirla como enlace externo.
+export function externalUrl(url: string): string {
+  const u = url.trim();
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`;
+}
+
 // Diferencia en meses entre dos periodos (b - a)
 export function monthsBetween(a: string, b: string): number {
   const [ay, am] = a.split("-").map(Number);

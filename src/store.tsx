@@ -49,6 +49,8 @@ export interface Store {
   addDebt: (d: Omit<Debt, "id">) => void;
   updateDebt: (d: Debt) => void;
   archiveDebt: (id: string) => void;
+  unarchiveDebt: (id: string) => void;
+  deleteDebt: (id: string) => void;
   // marcar / desmarcar pago del mes (toggle) con monto opcional (pago parcial)
   togglePayment: (debt: Debt, period: string, amount?: number) => void;
   // abono extra a capital en una deuda a cuotas
@@ -120,6 +122,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           debts: s.debts.map((x) =>
             x.id === id ? { ...x, archived: true } : x
           ),
+        })),
+      unarchiveDebt: (id) =>
+        setState((s) => ({
+          ...s,
+          debts: s.debts.map((x) =>
+            x.id === id ? { ...x, archived: false } : x
+          ),
+        })),
+      deleteDebt: (id) =>
+        setState((s) => ({
+          ...s,
+          debts: s.debts.filter((x) => x.id !== id),
+          payments: s.payments.filter((p) => p.debtId !== id),
         })),
       togglePayment: (debt, period, amount) =>
         setState((s) => {

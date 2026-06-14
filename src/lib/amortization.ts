@@ -82,7 +82,9 @@ export function buildAmortization(debt: Debt, payments: Payment[]): Amortization
   const i = eaToMonthly(debt.interestRate ?? 0);
   const cuota = debt.amount;
   const n = debt.installmentsTotal ?? 0;
-  const principal = principalFromCuota(cuota, i, n);
+  // El total original es la fuente de verdad. Para deudas viejas sin `principal`,
+  // se reconstruye desde la cuota.
+  const principal = debt.principal ?? principalFromCuota(cuota, i, n);
 
   // eventos pagados reales, ordenados por periodo (cuota antes que abono en el mismo mes)
   const events = payments
@@ -187,7 +189,7 @@ export function buildAmortization(debt: Debt, payments: Payment[]): Amortization
   };
 }
 
-// Previsualiza el efecto de un abono a capital sobre el saldo actual.
+// Modalidad 1: abono a capital MANTENIENDO la cuota → se reduce el nº de cuotas.
 export function previewAbono(
   balance: number,
   i: number,
@@ -208,6 +210,38 @@ export function previewAbono(
     cuotasDespues: despues.count,
     cuotasReducidas: antes.count - despues.count,
     ahorroInteres: antes.totalInterest - despues.totalInterest,
+    nuevoSaldo,
+  };
+}
+
+// Modalidad 2: abono a capital MANTENIENDO el nº de cuotas → se reduce la cuota.
+export function previewReducirCuota(
+  balance: number,
+  i: number,
+  remaining: number,
+  cuotaActual: number,
+  abono: number
+): {
+  cuotaAntes: number;
+  cuotaDespues: number;
+  reduccionCuota: number;
+  ahorroInteres: number;
+  nuevoSaldo: number;
+} {
+  const nuevoSaldo = Math.max(0, balance - abono);
+  const nuevaCuota =
+    remaining > 0
+      ? i > 0
+        ? (nuevoSaldo * i) / (1 - Math.pow(1 + i, -remaining))
+        : nuevoSaldo / remaining
+      : 0;
+  const interesAntes = remaining * cuotaActual - balance;
+  const interesDespues = remaining * nuevaCuota - nuevoSaldo;
+  return {
+    cuotaAntes: cuotaActual,
+    cuotaDespues: nuevaCuota,
+    reduccionCuota: cuotaActual - nuevaCuota,
+    ahorroInteres: interesAntes - interesDespues,
     nuevoSaldo,
   };
 }

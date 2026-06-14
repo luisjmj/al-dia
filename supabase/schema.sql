@@ -42,11 +42,13 @@ create table if not exists public.debts (
   due_day            int  not null default 1,
   start_date         date not null default current_date,
   installments_total int,
+  principal          numeric,                          -- total financiado original (créditos)
   interest_rate      numeric,
   variable           boolean not null default false,  -- monto cambia cada mes (servicios)
   shared             boolean not null default false,
   color              text,
   note               text,
+  url                text,                             -- enlace para "ir a pagar"
   archived           boolean not null default false,
   created_at         timestamptz default now()
 );

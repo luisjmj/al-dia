@@ -83,6 +83,15 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
         await repo.archiveDebt(id);
         setDebts((xs) => xs.map((x) => (x.id === id ? { ...x, archived: true } : x)));
       },
+      unarchiveDebt: async (id) => {
+        await repo.unarchiveDebt(id);
+        setDebts((xs) => xs.map((x) => (x.id === id ? { ...x, archived: false } : x)));
+      },
+      deleteDebt: async (id) => {
+        await repo.deleteDebt(id);
+        setDebts((xs) => xs.filter((x) => x.id !== id));
+        setPayments((ps) => ps.filter((p) => p.debtId !== id));
+      },
       togglePayment: async (debt, period, amount) => {
         if (!household || !userId) return;
         const already = paidInPeriod(debt.id, period, payments);

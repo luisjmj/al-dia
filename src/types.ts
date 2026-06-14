@@ -38,12 +38,14 @@ export interface Debt {
   dueDay: number; // día del mes (1-31)
   startDate: string; // ISO yyyy-mm-dd
   installmentsTotal?: number; // solo para "installments"
+  principal?: number; // total financiado original (créditos a cuotas); fuente de verdad para amortización
   interestRate?: number; // % efectivo anual (E.A.) opcional; se convierte a mensual en lib/amortization
   variable?: boolean; // monto cambia cada mes (ej. servicios); `amount` es solo un estimado
   shared: boolean; // visible/pagable por la pareja
   ownerId: string;
   color: string;
   note?: string;
+  url?: string; // enlace para "ir a pagar" (web del banco/servicio)
   archived?: boolean;
 }
 
