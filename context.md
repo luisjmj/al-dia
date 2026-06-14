@@ -18,8 +18,8 @@ App de **control de deudas** personales y compartidas (con la pareja). Pensada p
 ## Supabase
 - Proyecto ref: `tcowdwbepwrvossknyem`. URL: `https://tcowdwbepwrvossknyem.supabase.co`.
 - Email confirmation DESACTIVADO (dev). Cuenta de prueba: `luis@aldia.test` / `prueba123`.
-- Esquema canónico en `supabase/schema.sql` (idempotente). Migraciones aplicadas: 001 (debts.variable), 002 (payments.type), 003 (debts.principal), 004 (debts.url).
-- Tablas: `profiles`, `households`, `household_members`, `debts`, `payments`. RLS por hogar; deuda visible si eres dueño o es compartida en tu hogar. Hogar compartido vía `invite_code` + RPC `join_household`. Trigger crea perfil+hogar al registrarse.
+- Esquema canónico en `supabase/schema.sql` (idempotente). Migraciones: 001 (debts.variable), 002 (payments.type), 003 (debts.principal), 004 (debts.url), **005 (tabla categories) — PENDIENTE de correr** para que la sección admin persista.
+- Tablas: `profiles`, `households`, `household_members`, `debts`, `payments`, `categories`. RLS por hogar; deuda visible si eres dueño o es compartida en tu hogar. Hogar compartido vía `invite_code` + RPC `join_household`. Trigger crea perfil+hogar al registrarse.
 - Para verificar datos con RLS se usa el token de sesión del navegador (la anon key sola devuelve `[]`).
 
 ## Arquitectura
@@ -33,6 +33,7 @@ App de **control de deudas** personales y compartidas (con la pareja). Pensada p
 - **Pagos**: toggle mensual por deuda; navegación entre meses; registra quién pagó. En meses pasados, botón **"Generar pagos para este mes"** para incluir deudas creadas después. Al crear una deuda con inicio pasado, pregunta cuántas cuotas ya pagaste y las registra (backfill).
 - **Estadísticas**: gasto mes a mes, **proyección del próximo mes** (comprometido + colchón variable del histórico), por categoría, aporte por persona.
 - **Archivadas**: menú en Deudas para restaurar o eliminar (borrado real, pagos en cascada).
+- **Admin** (`/admin`, ícono de ajustes en el header): gestionar categorías (agregar/editar nombre, color, ícono / eliminar con confirmación). Categorías guardadas por hogar en tabla `categories`; las páginas leen `categories` del store (no más constante fija). `CategoryId` ahora es texto libre (slug). Fallback a las 8 predeterminadas si la tabla no existe.
 - **Diseño**: tags de categoría con fondo sólido + texto oscuro/claro automático (`readableText` en `lib/format.ts`). Deudas con inicio futuro muestran "Programada" (no "Finalizada").
 
 ## Pendiente / roadmap
