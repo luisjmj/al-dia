@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Debt, DebtKind, Frequency, CategoryId } from "../types";
 import { CATEGORIES } from "../lib/seed";
 import { Modal } from "./ui";
 import { useStore } from "../store";
 import { eaToMonthly, principalFromCuota } from "../lib/amortization";
-import { formatCOP } from "../lib/format";
+import { formatCOP, currentPeriod, monthsBetween } from "../lib/format";
 import { Repeat, CalendarClock, Coins } from "lucide-react";
 
 // Cuota mensual (sistema francés) a partir del total financiado.
@@ -76,6 +76,7 @@ export default function DebtForm({
   const [shared, setShared] = useState(e?.shared ?? false);
   const [note, setNote] = useState(e?.note ?? "");
   const [url, setUrl] = useState(e?.url ?? "");
+  const [prepaid, setPrepaid] = useState("0");
 
   const cat = CATEGORIES.find((c) => c.id === category)!;
   const valid = name.trim() && Number(amount) > 0;
@@ -89,6 +90,24 @@ export default function DebtForm({
         Number(installmentsTotal) || 0
       )
     : 0;
+
+  // Meses transcurridos desde el inicio (para registrar deudas de meses pasados).
+  const elapsed = Math.max(
+    0,
+    monthsBetween(startDate.slice(0, 7), currentPeriod())
+  );
+  const maxPrepaid =
+    kind === "one_time"
+      ? Math.min(elapsed, 1)
+      : kind === "installments"
+      ? Math.min(elapsed, Number(installmentsTotal) || elapsed)
+      : elapsed;
+  const showPrepaid = !e && maxPrepaid > 0;
+
+  // al cambiar la fecha/tipo, sugerimos pagar todos los meses pasados
+  useEffect(() => {
+    setPrepaid(String(maxPrepaid));
+  }, [maxPrepaid]);
 
   function submit() {
     if (!valid) return;
@@ -114,8 +133,14 @@ export default function DebtForm({
       url: url.trim() || undefined,
       archived: e?.archived,
     };
-    if (e) updateDebt({ ...base, id: e.id });
-    else addDebt(base);
+    if (e) {
+      updateDebt({ ...base, id: e.id });
+    } else {
+      const prepaidMonths = showPrepaid
+        ? Math.min(maxPrepaid, Math.max(0, Number(prepaid) || 0))
+        : 0;
+      addDebt(base, prepaidMonths);
+    }
     onClose();
   }
 
@@ -279,6 +304,51 @@ export default function DebtForm({
               ).toFixed(2)}
               % mensual
             </span>
+          </div>
+        )}
+
+        {/* Registrar meses pasados ya pagados */}
+        {showPrepaid && (
+          <div className="card p-3.5 bg-surface-2/50">
+            <label className="label !mb-1">¿Cuántas cuotas ya pagaste?</label>
+            <p className="text-xs text-muted mb-2.5">
+              Empezó hace {elapsed} {elapsed === 1 ? "mes" : "meses"}. Las
+              registramos como pagadas en sus meses para que el historial quede
+              al día.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-ghost !px-3 !py-2"
+                onClick={() =>
+                  setPrepaid((p) => String(Math.max(0, (Number(p) || 0) - 1)))
+                }
+              >
+                −
+              </button>
+              <input
+                className="input text-center !w-16"
+                inputMode="numeric"
+                value={prepaid}
+                onChange={(ev) =>
+                  setPrepaid(ev.target.value.replace(/\D/g, ""))
+                }
+              />
+              <button
+                type="button"
+                className="btn-ghost !px-3 !py-2"
+                onClick={() =>
+                  setPrepaid((p) =>
+                    String(Math.min(maxPrepaid, (Number(p) || 0) + 1))
+                  )
+                }
+              >
+                +
+              </button>
+              <span className="text-sm text-muted ml-1">
+                de {maxPrepaid} {maxPrepaid === 1 ? "mes" : "meses"}
+              </span>
+            </div>
           </div>
         )}
 

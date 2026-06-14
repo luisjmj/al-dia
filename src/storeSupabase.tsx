@@ -10,7 +10,7 @@ import { Ctx, type Store, loadTheme, saveTheme } from "./store";
 import { useAuth } from "./auth";
 import * as repo from "./lib/repo";
 import { paidInPeriod, expectedAmount } from "./lib/finance";
-import { currentPeriod } from "./lib/format";
+import { currentPeriod, addMonths } from "./lib/format";
 
 export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
   const { userId, signOut } = useAuth();
@@ -69,10 +69,28 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
         : undefined,
       setCurrentUser: () => {}, // en modo nube eres tú; no aplica
       toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
-      addDebt: async (d) => {
+      addDebt: async (d, prepaidMonths) => {
         if (!household) return;
         const created = await repo.insertDebt(d, household.id);
         setDebts((xs) => [...xs, created]);
+        // registrar meses pasados ya pagados
+        if (prepaidMonths && prepaidMonths > 0 && userId) {
+          const startPeriod = d.startDate.slice(0, 7);
+          const nuevos = [];
+          for (let i = 0; i < prepaidMonths; i++) {
+            nuevos.push(
+              await repo.insertPayment(
+                created.id,
+                household.id,
+                addMonths(startPeriod, i),
+                created.amount,
+                userId,
+                "cuota"
+              )
+            );
+          }
+          setPayments((ps) => [...ps, ...nuevos]);
+        }
       },
       updateDebt: async (d) => {
         if (!household) return;

@@ -9,6 +9,7 @@ import {
 import type { Debt, Payment, User } from "./types";
 import { SEED_USERS, SEED_DEBTS, buildSeedPayments } from "./lib/seed";
 import { paidInPeriod, expectedAmount } from "./lib/finance";
+import { addMonths } from "./lib/format";
 
 const KEY = "aldia.v1";
 
@@ -46,7 +47,8 @@ export interface Store {
   // acciones
   setCurrentUser: (id: string) => void;
   toggleTheme: () => void;
-  addDebt: (d: Omit<Debt, "id">) => void;
+  // prepaidMonths: cuántos meses (desde el inicio) registrar ya como pagados
+  addDebt: (d: Omit<Debt, "id">, prepaidMonths?: number) => void;
   updateDebt: (d: Debt) => void;
   archiveDebt: (id: string) => void;
   unarchiveDebt: (id: string) => void;
@@ -106,11 +108,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...s,
           theme: s.theme === "dark" ? "light" : "dark",
         })),
-      addDebt: (d) =>
-        setState((s) => ({
-          ...s,
-          debts: [...s.debts, { ...d, id: `d_${crypto.randomUUID()}` }],
-        })),
+      addDebt: (d, prepaidMonths) =>
+        setState((s) => {
+          const id = `d_${crypto.randomUUID()}`;
+          const extra: Payment[] = [];
+          if (prepaidMonths && prepaidMonths > 0) {
+            const startPeriod = d.startDate.slice(0, 7);
+            for (let i = 0; i < prepaidMonths; i++) {
+              extra.push({
+                id: `p_${crypto.randomUUID()}`,
+                debtId: id,
+                period: addMonths(startPeriod, i),
+                amount: d.amount,
+                paidById: state.currentUserId,
+                paidAt: new Date().toISOString(),
+                type: "cuota",
+              });
+            }
+          }
+          return {
+            ...s,
+            debts: [...s.debts, { ...d, id }],
+            payments: [...s.payments, ...extra],
+          };
+        }),
       updateDebt: (d) =>
         setState((s) => ({
           ...s,
