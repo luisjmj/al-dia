@@ -1,6 +1,7 @@
 import * as Icons from "lucide-react";
 import type { ReactNode } from "react";
 import { categoryById } from "../lib/seed";
+import { readableText } from "../lib/format";
 
 // Icono dinámico por nombre de lucide
 export function Icon({
@@ -18,8 +19,8 @@ export function CategoryBadge({ id }: { id: string }) {
   const c = categoryById(id);
   return (
     <span
-      className="chip"
-      style={{ backgroundColor: `${c.color}22`, color: c.color }}
+      className="chip font-semibold"
+      style={{ backgroundColor: c.color, color: readableText(c.color) }}
     >
       <Icon name={c.icon} className="w-3.5 h-3.5" />
       {c.label}

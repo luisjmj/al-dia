@@ -46,6 +46,17 @@ export function addMonths(period: string, n: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// Devuelve un color de texto (oscuro o claro) legible sobre el fondo dado.
+export function readableText(hex: string): string {
+  const h = hex.replace("#", "");
+  if (h.length < 6) return "#0b0f17";
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.58 ? "#0b0f17" : "#ffffff";
+}
+
 // Asegura que la URL tenga protocolo para abrirla como enlace externo.
 export function externalUrl(url: string): string {
   const u = url.trim();

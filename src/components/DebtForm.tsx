@@ -4,7 +4,7 @@ import { CATEGORIES } from "../lib/seed";
 import { Modal } from "./ui";
 import { useStore } from "../store";
 import { eaToMonthly, principalFromCuota } from "../lib/amortization";
-import { formatCOP, currentPeriod, monthsBetween } from "../lib/format";
+import { formatCOP, currentPeriod, monthsBetween, readableText } from "../lib/format";
 import { Repeat, CalendarClock, Coins } from "lucide-react";
 
 // Cuota mensual (sistema francés) a partir del total financiado.
@@ -258,10 +258,14 @@ export default function DebtForm({
               <button
                 key={c.id}
                 onClick={() => setCategory(c.id)}
-                className="chip border transition"
+                className="chip border font-semibold transition"
                 style={
                   category === c.id
-                    ? { backgroundColor: `${c.color}22`, color: c.color, borderColor: c.color }
+                    ? {
+                        backgroundColor: c.color,
+                        color: readableText(c.color),
+                        borderColor: c.color,
+                      }
                     : { borderColor: "rgb(var(--border))", color: "rgb(var(--muted))" }
                 }
               >
