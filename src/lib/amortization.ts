@@ -1,5 +1,5 @@
 // Motor de amortización para deudas a cuotas (sistema francés: cuota fija).
-// `debt.amount` = valor de la cuota; `debt.interestRate` = % mensual.
+// `debt.amount` = valor de la cuota; `debt.interestRate` = % efectivo anual (E.A.).
 // Calcula capital original, desglose interés/capital por cuota, saldo y
 // el efecto de abonos a capital (reducción de número de cuotas).
 import type { Debt, Payment } from "../types";

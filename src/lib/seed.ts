@@ -1,15 +1,17 @@
 import type { Category, Debt, Payment, User } from "../types";
 import { addMonths, currentPeriod } from "./format";
 
+// Paleta con tonos bien separados entre sí (turquesa, verde, ámbar, naranja,
+// rosa, púrpura, azul, gris). Todos claros para que el texto oscuro contraste.
 export const CATEGORIES: Category[] = [
-  { id: "servicios", label: "Servicios", color: "#38bdf8", icon: "Zap" },
+  { id: "servicios", label: "Servicios", color: "#22d3ee", icon: "Zap" },
   { id: "tarjeta", label: "Tarjeta", color: "#f472b6", icon: "CreditCard" },
   { id: "prestamo", label: "Préstamo", color: "#fb923c", icon: "Landmark" },
-  { id: "suscripcion", label: "Suscripción", color: "#a78bfa", icon: "Repeat" },
-  { id: "hogar", label: "Hogar", color: "#34d399", icon: "Home" },
+  { id: "suscripcion", label: "Suscripción", color: "#c084fc", icon: "Repeat" },
+  { id: "hogar", label: "Hogar", color: "#4ade80", icon: "Home" },
   { id: "carro", label: "Carro", color: "#60a5fa", icon: "Car" },
-  { id: "personal", label: "Personal", color: "#facc15", icon: "User" },
-  { id: "otro", label: "Otro", color: "#94a3b8", icon: "Tag" },
+  { id: "personal", label: "Personal", color: "#fde047", icon: "User" },
+  { id: "otro", label: "Otro", color: "#cbd5e1", icon: "Tag" },
 ];
 
 export const categoryById = (id: string) =>
