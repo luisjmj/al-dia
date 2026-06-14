@@ -73,6 +73,8 @@ export default function Debts() {
           {visible.map((d) => {
             const owner = users.find((u) => u.id === d.ownerId);
             const active = isDebtActiveIn(d, period);
+            const notStarted = d.startDate.slice(0, 7) > period; // empieza en el futuro
+            const finished = !active && !notStarted; // ya terminó (no es que no empezó)
             const paidCount = installmentsPaid(d, payments);
             const total = d.installmentsTotal ?? 0;
             return (
@@ -135,7 +137,12 @@ export default function Debts() {
                       <Users className="w-3.5 h-3.5" /> Compartida
                     </span>
                   )}
-                  {!active && (
+                  {notStarted && (
+                    <span className="chip bg-surface-2 text-muted">
+                      Programada
+                    </span>
+                  )}
+                  {finished && (
                     <span className="chip bg-surface-2 text-muted">
                       Finalizada
                     </span>
