@@ -21,7 +21,8 @@ export default function PaymentRow({
     (p) => p.debtId === debt.id && p.period === period
   );
   const payer = users.find((u) => u.id === payRecord?.paidById);
-  const suggested = expectedAmount(debt, period, payments);
+  // si la deuda no está "activa" ese periodo (ej. mes pasado al generar), usamos su monto base
+  const suggested = expectedAmount(debt, period, payments) || debt.amount;
 
   const [draft, setDraft] = useState<string>(String(Math.round(suggested)));
   const paidAmount = payRecord?.amount ?? suggested;

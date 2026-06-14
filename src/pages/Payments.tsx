@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../store";
-import { isDebtActiveIn, totalExpected, totalPaid } from "../lib/finance";
+import { isDebtActiveIn, paidInPeriod, totalPaid } from "../lib/finance";
+import { expectedAmount } from "../lib/finance";
 import {
   addMonths,
   currentPeriod,
@@ -9,22 +10,57 @@ import {
 } from "../lib/format";
 import { ProgressBar, EmptyState } from "../components/ui";
 import PaymentRow from "../components/PaymentRow";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarPlus } from "lucide-react";
 
 export default function Payments() {
   const { debts, payments } = useStore();
   const [period, setPeriod] = useState(currentPeriod());
+  // en meses pasados se puede "generar" para incluir todas las deudas
+  const [generated, setGenerated] = useState(false);
 
-  const active = useMemo(
+  // al cambiar de mes, se vuelve a ocultar lo generado
+  useEffect(() => setGenerated(false), [period]);
+
+  const isPast = period < currentPeriod();
+
+  // deudas que se muestran normalmente: activas ese mes, o con pago ya hecho ese mes
+  const base = useMemo(
     () =>
-      debts
-        .filter((d) => isDebtActiveIn(d, period))
-        .sort((a, b) => a.dueDay - b.dueDay),
-    [debts, period]
+      debts.filter(
+        (d) =>
+          !d.archived &&
+          (isDebtActiveIn(d, period) ||
+            paidInPeriod(d.id, period, payments) > 0)
+      ),
+    [debts, period, payments]
   );
 
-  const expected = totalExpected(active, period, payments);
+  // deudas que existen pero no aplican ese mes (ej. creadas después) y aún sin pago
+  const extra = useMemo(
+    () =>
+      debts.filter(
+        (d) =>
+          !d.archived &&
+          !isDebtActiveIn(d, period) &&
+          paidInPeriod(d.id, period, payments) === 0
+      ),
+    [debts, period, payments]
+  );
+
+  const shown = useMemo(
+    () =>
+      [...(generated ? [...base, ...extra] : base)].sort(
+        (a, b) => a.dueDay - b.dueDay
+      ),
+    [base, extra, generated]
+  );
+
+  const expected = shown.reduce(
+    (s, d) => s + (expectedAmount(d, period, payments) || d.amount),
+    0
+  );
   const paid = totalPaid(period, payments);
+  const canGenerate = isPast && !generated && extra.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -55,19 +91,32 @@ export default function Payments() {
 
       <ProgressBar value={expected ? paid / expected : 0} color="#34d399" />
 
-      {active.length === 0 ? (
-        <EmptyState title="No hay deudas activas este mes" />
+      {shown.length === 0 && !canGenerate ? (
+        <EmptyState title="No hay deudas para este mes" />
       ) : (
         <div className="flex flex-col gap-2">
-          {active.map((d) => (
+          {shown.map((d) => (
             <PaymentRow key={d.id} debt={d} period={period} />
           ))}
         </div>
       )}
 
+      {/* Generar pagos de un mes pasado */}
+      {canGenerate && (
+        <button
+          onClick={() => setGenerated(true)}
+          className="btn-ghost w-full !py-3"
+        >
+          <CalendarPlus className="w-4.5 h-4.5" />
+          Generar pagos para este mes
+          <span className="text-muted font-normal">({extra.length})</span>
+        </button>
+      )}
+
       <p className="text-xs text-muted text-center">
-        Toca una deuda para marcarla como pagada. En los gastos variables,
-        escribe cuánto costó este mes.
+        {isPast
+          ? "Marca las deudas que pagaste este mes. Usa “Generar pagos” para incluir las demás."
+          : "Toca una deuda para marcarla como pagada. En los gastos variables, escribe cuánto costó este mes."}
       </p>
     </div>
   );
