@@ -1,0 +1,10 @@
+{
+  // Configuración para Cloudflare (Workers + Static Assets).
+  "name": "al-dia",
+  "compatibility_date": "2025-01-01",
+  "assets": {
+    "directory": "./dist",
+    // Sirve index.html para rutas no encontradas → routing de SPA (React Router).
+    "not_found_handling": "single-page-application"
+  }
+}
