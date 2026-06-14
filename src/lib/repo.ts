@@ -1,7 +1,8 @@
 // Capa de acceso a datos: traduce entre filas de Supabase (snake_case)
 // y los tipos de la app (camelCase).
 import { supabase } from "./supabase";
-import type { Debt, Payment, User } from "../types";
+import type { Category, Debt, Payment, User } from "../types";
+import { CATEGORIES } from "./seed";
 
 function sb() {
   if (!supabase) throw new Error("Supabase no configurado");
@@ -232,4 +233,78 @@ export async function joinHousehold(code: string): Promise<string> {
   });
   if (error) throw error;
   return data as string;
+}
+
+// ---------- Categorías ----------
+function rowToCategory(r: any): Category {
+  return { id: r.slug, label: r.label, color: r.color, icon: r.icon };
+}
+
+// Devuelve las categorías del hogar. Si no hay ninguna, siembra las predeterminadas.
+export async function getCategories(householdId: string): Promise<Category[]> {
+  const { data, error } = await sb()
+    .from("categories")
+    .select("*")
+    .eq("household_id", householdId)
+    .order("sort", { ascending: true });
+  if (error) throw error;
+  if (data && data.length > 0) return data.map(rowToCategory);
+
+  // sembrar predeterminadas la primera vez
+  const seed = CATEGORIES.map((c, idx) => ({
+    household_id: householdId,
+    slug: c.id,
+    label: c.label,
+    color: c.color,
+    icon: c.icon,
+    sort: idx,
+  }));
+  const { data: seeded, error: e2 } = await sb()
+    .from("categories")
+    .insert(seed)
+    .select();
+  if (e2) throw e2;
+  return (seeded ?? [])
+    .sort((a: any, b: any) => a.sort - b.sort)
+    .map(rowToCategory);
+}
+
+export async function insertCategory(
+  householdId: string,
+  cat: Category,
+  sort: number
+): Promise<void> {
+  const { error } = await sb().from("categories").insert({
+    household_id: householdId,
+    slug: cat.id,
+    label: cat.label,
+    color: cat.color,
+    icon: cat.icon,
+    sort,
+  });
+  if (error) throw error;
+}
+
+export async function updateCategory(
+  householdId: string,
+  cat: Category
+): Promise<void> {
+  const { error } = await sb()
+    .from("categories")
+    .update({ label: cat.label, color: cat.color, icon: cat.icon })
+    .eq("household_id", householdId)
+    .eq("slug", cat.id);
+  if (error) throw error;
+}
+
+export async function deleteCategory(
+  householdId: string,
+  slug: string
+): Promise<void> {
+  const { error } = await sb()
+    .from("categories")
+    .delete()
+    .eq("household_id", householdId)
+    .eq("slug", slug);
+  if (error) throw error;
 }

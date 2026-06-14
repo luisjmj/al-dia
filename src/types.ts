@@ -4,18 +4,12 @@
 export type DebtKind = "recurring" | "installments" | "one_time";
 export type Frequency = "monthly" | "biweekly" | "weekly";
 
-export type CategoryId =
-  | "servicios"
-  | "tarjeta"
-  | "prestamo"
-  | "suscripcion"
-  | "hogar"
-  | "carro"
-  | "personal"
-  | "otro";
+// Las categorías ahora son configurables (admin), por eso el id es texto libre
+// (slug). Las 8 predeterminadas conservan sus slugs históricos.
+export type CategoryId = string;
 
 export interface Category {
-  id: CategoryId;
+  id: CategoryId; // slug estable usado por debts.category
   label: string;
   color: string; // hex
   icon: string; // lucide icon name

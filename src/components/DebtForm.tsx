@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import type { Debt, DebtKind, Frequency, CategoryId } from "../types";
-import { CATEGORIES } from "../lib/seed";
 import { Modal } from "./ui";
 import { useStore } from "../store";
 import { eaToMonthly, principalFromCuota } from "../lib/amortization";
@@ -40,7 +39,7 @@ export default function DebtForm({
   onClose: () => void;
   editing?: Debt | null;
 }) {
-  const { addDebt, updateDebt, currentUser } = useStore();
+  const { addDebt, updateDebt, currentUser, categories } = useStore();
   const e = editing;
 
   const [name, setName] = useState(e?.name ?? "");
@@ -63,7 +62,9 @@ export default function DebtForm({
   });
   const [kind, setKind] = useState<DebtKind>(e?.kind ?? "recurring");
   const [frequency, setFrequency] = useState<Frequency>(e?.frequency ?? "monthly");
-  const [category, setCategory] = useState<CategoryId>(e?.category ?? "servicios");
+  const [category, setCategory] = useState<CategoryId>(
+    e?.category ?? categories[0]?.id ?? "otro"
+  );
   const [dueDay, setDueDay] = useState<string>(e ? String(e.dueDay) : "5");
   const [startDate, setStartDate] = useState(e?.startDate ?? todayISO());
   const [installmentsTotal, setInstallmentsTotal] = useState<string>(
@@ -78,7 +79,7 @@ export default function DebtForm({
   const [url, setUrl] = useState(e?.url ?? "");
   const [prepaid, setPrepaid] = useState("0");
 
-  const cat = CATEGORIES.find((c) => c.id === category)!;
+  const cat = categories.find((c) => c.id === category) ?? categories[0];
   const valid = name.trim() && Number(amount) > 0;
 
   // Para créditos: el campo es el TOTAL; la cuota mensual se calcula.
@@ -128,7 +129,7 @@ export default function DebtForm({
       variable,
       shared,
       ownerId: e?.ownerId ?? currentUser.id,
-      color: cat.color,
+      color: cat?.color ?? "#94a3b8",
       note: note.trim() || undefined,
       url: url.trim() || undefined,
       archived: e?.archived,
@@ -254,7 +255,7 @@ export default function DebtForm({
         <div>
           <label className="label">Categoría</label>
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((c) => (
+            {categories.map((c) => (
               <button
                 key={c.id}
                 onClick={() => setCategory(c.id)}

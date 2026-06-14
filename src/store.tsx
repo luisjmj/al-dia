@@ -6,8 +6,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Debt, Payment, User } from "./types";
-import { SEED_USERS, SEED_DEBTS, buildSeedPayments } from "./lib/seed";
+import type { Category, Debt, Payment, User } from "./types";
+import { SEED_USERS, SEED_DEBTS, buildSeedPayments, CATEGORIES } from "./lib/seed";
 import { paidInPeriod, expectedAmount } from "./lib/finance";
 import { addMonths } from "./lib/format";
 
@@ -16,6 +16,7 @@ const KEY = "aldia.v1";
 interface Persisted {
   debts: Debt[];
   payments: Payment[];
+  categories: Category[];
   currentUserId: string;
   theme: "dark" | "light";
 }
@@ -23,13 +24,19 @@ interface Persisted {
 function load(): Persisted {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // datos viejos pueden no traer categorías
+      if (!parsed.categories) parsed.categories = CATEGORIES;
+      return parsed;
+    }
   } catch {
     /* ignore */
   }
   return {
     debts: SEED_DEBTS,
     payments: buildSeedPayments(),
+    categories: CATEGORIES,
     currentUserId: "u_me",
     theme: "dark",
   };
@@ -43,10 +50,14 @@ export interface Store {
   currentUserId: string;
   debts: Debt[];
   payments: Payment[];
+  categories: Category[];
   theme: "dark" | "light";
   // acciones
   setCurrentUser: (id: string) => void;
   toggleTheme: () => void;
+  addCategory: (cat: Category) => void;
+  updateCategory: (cat: Category) => void;
+  deleteCategory: (slug: string) => void;
   // prepaidMonths: cuántos meses (desde el inicio) registrar ya como pagados
   addDebt: (d: Omit<Debt, "id">, prepaidMonths?: number) => void;
   updateDebt: (d: Debt) => void;
@@ -100,6 +111,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       currentUserId: state.currentUserId,
       debts: state.debts,
       payments: state.payments,
+      categories: state.categories,
       theme: state.theme,
       setCurrentUser: (id) =>
         setState((s) => ({ ...s, currentUserId: id })),
@@ -107,6 +119,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState((s) => ({
           ...s,
           theme: s.theme === "dark" ? "light" : "dark",
+        })),
+      addCategory: (cat) =>
+        setState((s) => ({ ...s, categories: [...s.categories, cat] })),
+      updateCategory: (cat) =>
+        setState((s) => ({
+          ...s,
+          categories: s.categories.map((c) => (c.id === cat.id ? cat : c)),
+        })),
+      deleteCategory: (slug) =>
+        setState((s) => ({
+          ...s,
+          categories: s.categories.filter((c) => c.id !== slug),
         })),
       addDebt: (d, prepaidMonths) =>
         setState((s) => {
@@ -201,6 +225,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState({
           debts: SEED_DEBTS,
           payments: buildSeedPayments(),
+          categories: CATEGORIES,
           currentUserId: "u_me",
           theme: state.theme,
         }),

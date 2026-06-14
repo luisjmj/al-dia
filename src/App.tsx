@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Debts from "./pages/Debts";
 import Payments from "./pages/Payments";
 import Stats from "./pages/Stats";
+import Admin from "./pages/Admin";
 import { CheckCircle2 } from "lucide-react";
 
 // aplica el tema guardado al cargar
@@ -23,6 +24,7 @@ function AppRoutes() {
           <Route path="/deudas" element={<Debts />} />
           <Route path="/pagos" element={<Payments />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </Layout>
     </BrowserRouter>

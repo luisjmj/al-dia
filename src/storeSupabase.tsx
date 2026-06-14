@@ -5,8 +5,9 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import type { Debt, Payment, User } from "./types";
+import type { Category, Debt, Payment, User } from "./types";
 import { Ctx, type Store, loadTheme, saveTheme } from "./store";
+import { CATEGORIES } from "./lib/seed";
 import { useAuth } from "./auth";
 import * as repo from "./lib/repo";
 import { paidInPeriod, expectedAmount } from "./lib/finance";
@@ -19,6 +20,7 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
   const [theme, setTheme] = useState<"dark" | "light">(loadTheme);
 
   useEffect(() => {
@@ -39,6 +41,13 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
       setUsers(m);
       setDebts(d);
       setPayments(p);
+      // categorías: si la tabla aún no existe (migración pendiente), usamos las predeterminadas
+      try {
+        const cats = await repo.getCategories(h.id);
+        if (cats.length) setCategories(cats);
+      } catch {
+        setCategories(CATEGORIES);
+      }
     } catch (e) {
       console.error("Error cargando datos:", e);
     } finally {
@@ -63,12 +72,28 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
       currentUserId: userId ?? "",
       debts,
       payments,
+      categories,
       theme,
       household: household
         ? { id: household.id, name: household.name, inviteCode: household.inviteCode }
         : undefined,
       setCurrentUser: () => {}, // en modo nube eres tú; no aplica
       toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
+      addCategory: async (cat) => {
+        if (!household) return;
+        await repo.insertCategory(household.id, cat, categories.length);
+        setCategories((cs) => [...cs, cat]);
+      },
+      updateCategory: async (cat) => {
+        if (!household) return;
+        await repo.updateCategory(household.id, cat);
+        setCategories((cs) => cs.map((c) => (c.id === cat.id ? cat : c)));
+      },
+      deleteCategory: async (slug) => {
+        if (!household) return;
+        await repo.deleteCategory(household.id, slug);
+        setCategories((cs) => cs.filter((c) => c.id !== slug));
+      },
       addDebt: async (d, prepaidMonths) => {
         if (!household) return;
         const created = await repo.insertDebt(d, household.id);
@@ -150,7 +175,7 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     };
-  }, [loading, users, currentUser, userId, debts, payments, theme, household, refresh, signOut]);
+  }, [loading, users, currentUser, userId, debts, payments, categories, theme, household, refresh, signOut]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

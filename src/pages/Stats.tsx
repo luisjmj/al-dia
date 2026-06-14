@@ -16,7 +16,6 @@ import {
   periodShort,
   periodLabel,
 } from "../lib/format";
-import { categoryById } from "../lib/seed";
 import { StatCard } from "../components/ui";
 import {
   BarChart,
@@ -33,8 +32,13 @@ import {
 import { TrendingUp, Calendar, Wallet, Trophy } from "lucide-react";
 
 export default function Stats() {
-  const { debts, payments, users } = useStore();
+  const { debts, payments, users, categories } = useStore();
   const period = currentPeriod();
+  const catBy = (id: string) =>
+    categories.find((c) => c.id === id) ?? {
+      label: "Sin categoría",
+      color: "#94a3b8",
+    };
 
   const history = useMemo(() => spendingByMonth(payments, 6), [payments]);
   const avg = useMemo(() => avgMonthlySpend(payments), [payments]);
@@ -64,9 +68,9 @@ export default function Stats() {
   const catData = Object.entries(cats)
     .map(([id, value]) => ({
       id,
-      name: categoryById(id).label,
+      name: catBy(id).label,
       value: Math.round(value),
-      color: categoryById(id).color,
+      color: catBy(id).color,
     }))
     .sort((a, b) => b.value - a.value);
 

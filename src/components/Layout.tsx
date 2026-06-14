@@ -11,6 +11,7 @@ import {
   Copy,
   Check,
   UserPlus,
+  Settings,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useStore } from "../store";
@@ -70,6 +71,16 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
           <div className="hidden md:block" />
           <div className="flex items-center gap-2">
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `btn-ghost !px-2.5 !py-2.5 ${isActive ? "text-brand" : ""}`
+              }
+              aria-label="Administración"
+              title="Administración"
+            >
+              <Settings className="w-5 h-5" />
+            </NavLink>
             <button
               onClick={toggleTheme}
               className="btn-ghost !px-2.5 !py-2.5"

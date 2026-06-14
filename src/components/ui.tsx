@@ -1,7 +1,9 @@
 import * as Icons from "lucide-react";
 import type { ReactNode } from "react";
-import { categoryById } from "../lib/seed";
 import { readableText } from "../lib/format";
+import { useStore } from "../store";
+
+const FALLBACK_CAT = { label: "Sin categoría", color: "#94a3b8", icon: "Tag" };
 
 // Icono dinámico por nombre de lucide
 export function Icon({
@@ -16,7 +18,8 @@ export function Icon({
 }
 
 export function CategoryBadge({ id }: { id: string }) {
-  const c = categoryById(id);
+  const { categories } = useStore();
+  const c = categories.find((x) => x.id === id) ?? FALLBACK_CAT;
   return (
     <span
       className="chip font-semibold"
