@@ -76,7 +76,7 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
         // registrar meses pasados ya pagados
         if (prepaidMonths && prepaidMonths > 0 && userId) {
           const startPeriod = d.startDate.slice(0, 7);
-          const nuevos = [];
+          const nuevos: Payment[] = [];
           for (let i = 0; i < prepaidMonths; i++) {
             nuevos.push(
               await repo.insertPayment(
