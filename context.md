@@ -2,7 +2,7 @@
 
 App de **control de deudas** personales y compartidas (con la pareja). Pensada para Colombia (COP), uso en PC y celular. Dueño: Luis (GitHub `luisjmj`).
 
-> **Estado (al retomar):** todas las funcionalidades listadas abajo están implementadas, probadas y desplegadas. Último commit pusheado: `0d1d0ba`. Esta actualización de `context.md` se hizo en local **sin push** (a pedido del usuario), así que el working tree tiene `context.md` modificado sin commitear. Lo siguiente del roadmap es la **PWA**.
+> **Estado (al retomar):** todas las funcionalidades listadas abajo están implementadas, probadas y desplegadas. Último commit pusheado: `c9ac784`. Lo siguiente del roadmap es la **PWA**.
 
 ## Stack
 - **React + Vite + TypeScript**, **Tailwind CSS** (modo oscuro por defecto + claro).
@@ -20,7 +20,7 @@ App de **control de deudas** personales y compartidas (con la pareja). Pensada p
 ## Supabase
 - Proyecto ref: `tcowdwbepwrvossknyem`. URL: `https://tcowdwbepwrvossknyem.supabase.co`.
 - Email confirmation DESACTIVADO (dev). Cuenta de prueba: `luis@aldia.test` / `prueba123`.
-- Esquema canónico en `supabase/schema.sql` (idempotente). Migraciones aplicadas (todas corridas): 001 (debts.variable), 002 (payments.type), 003 (debts.principal), 004 (debts.url), 005 (tabla categories). Las 8 categorías predeterminadas ya están sembradas en el hogar; hay una categoría extra de prueba **"Mascotas"** (slug `mascotas`) que el usuario puede borrar desde el admin si quiere.
+- Esquema canónico en `supabase/schema.sql` (idempotente). Migraciones aplicadas (todas corridas): 001 (debts.variable), 002 (payments.type), 003 (debts.principal), 004 (debts.url), 005 (tabla categories). La columna `payments.type` acepta `"cuota" | "abono" | "skipped"`. Las 8 categorías predeterminadas ya están sembradas en el hogar; hay una categoría extra de prueba **"Mascotas"** (slug `mascotas`) que el usuario puede borrar desde el admin si quiere.
 - Tablas: `profiles`, `households`, `household_members`, `debts`, `payments`, `categories`. RLS por hogar; deuda visible si eres dueño o es compartida en tu hogar. Hogar compartido vía `invite_code` + RPC `join_household`. Trigger crea perfil+hogar al registrarse.
 - Para verificar datos con RLS se usa el token de sesión del navegador (la anon key sola devuelve `[]`).
 
@@ -31,8 +31,8 @@ App de **control de deudas** personales y compartidas (con la pareja). Pensada p
 
 ## Funcionalidades
 - **Deudas**: tipo recurrente / a cuotas / pago único; frecuencia; categoría; día de pago; interés **E.A.** (efectivo anual); monto **variable** (servicios, se registra el real al pagar); compartida; URL "ir a pagar" (ícono externo solo si hay URL); nota.
-- **Créditos a cuotas**: se ingresa el **valor total** y la app calcula la cuota (sistema francés). Detalle con tabla de amortización (interés/capital/saldo) y **abono a capital** en dos modalidades: *reducir nº de cuotas* o *reducir valor de la cuota*, con preview y Aceptar/Cancelar. Lógica en `lib/amortization.ts` (verificada: capital suma exacto, saldo a 0). `debt.principal` = total original (fuente de verdad).
-- **Pagos**: toggle mensual por deuda; navegación entre meses; registra quién pagó. En meses pasados, botón **"Generar pagos para este mes"** para incluir deudas creadas después. Al crear una deuda con inicio pasado, pregunta cuántas cuotas ya pagaste y las registra (backfill).
+- **Créditos a cuotas**: se ingresa el **valor total** y la app calcula la cuota (sistema francés). Detalle con tabla de amortización (interés/capital/saldo) y **abono a capital** en dos modalidades: *reducir nº de cuotas* o *reducir valor de la cuota*, con preview y Aceptar/Cancelar. Lógica en `lib/amortization.ts`. Bug corregido: el preview de "ahorras en interés" usaba fórmula incorrecta (`remaining * cuota − saldo`) que se inflaba por redondeo; ahora usa simulación `payoff`. `debt.principal` = total original (fuente de verdad).
+- **Pagos**: toggle mensual por deuda; navegación entre meses; registra quién pagó. Botón **"No se paga este mes"** (ícono `MinusCircle`) en cada fila pendiente: marca la deuda como skipped (`Payment.type = "skipped"`, amount=0), la excluye de totales y del dashboard, reversible con "deshacer". En meses pasados, botón **"Generar pagos para este mes"** para incluir deudas que ya existían al momento actual pero no aplican ese mes pasado (excluye deudas cuyo `startDate` es posterior a hoy). Al crear una deuda con inicio pasado, pregunta cuántas cuotas ya pagaste y las registra (backfill).
 - **Estadísticas**: gasto mes a mes, **proyección del próximo mes** (comprometido + colchón variable del histórico), por categoría, aporte por persona.
 - **Archivadas**: menú en Deudas para restaurar o eliminar (borrado real, pagos en cascada).
 - **Admin** (`/admin`, ícono de ajustes en el header): gestionar categorías (agregar/editar nombre, color, ícono / eliminar con confirmación). VERIFICADO funcionando y persistiendo en Supabase. Categorías guardadas por hogar en tabla `categories`; las páginas leen `categories` del store (no más constante fija). `CategoryId` ahora es texto libre (slug). Fallback a las 8 predeterminadas si la tabla no existe. Componente: `pages/Admin.tsx`. Acciones en el store: `addCategory/updateCategory/deleteCategory`; repo: `getCategories` (siembra defaults si vacío), `insert/update/deleteCategory`.
