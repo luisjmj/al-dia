@@ -43,7 +43,7 @@ export default function Payments() {
         (d) =>
           !d.archived &&
           !isDebtActiveIn(d, period) &&
-          d.startDate.slice(0, 7) <= period &&
+          d.startDate.slice(0, 7) <= currentPeriod() &&
           paidInPeriod(d.id, period, payments) === 0
       ),
     [debts, period, payments]
