@@ -35,13 +35,15 @@ export default function Payments() {
     [debts, period, payments]
   );
 
-  // deudas que existen pero no aplican ese mes (ej. creadas después) y aún sin pago
+  // deudas que existían ese mes pero no aplican (ej. creadas después) y aún sin pago.
+  // Se excluyen las que aún no habían empezado en ese periodo.
   const extra = useMemo(
     () =>
       debts.filter(
         (d) =>
           !d.archived &&
           !isDebtActiveIn(d, period) &&
+          d.startDate.slice(0, 7) <= period &&
           paidInPeriod(d.id, period, payments) === 0
       ),
     [debts, period, payments]
