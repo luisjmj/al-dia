@@ -35,26 +35,30 @@ export default function Payments() {
     [debts, period, payments]
   );
 
-  // deudas que existían ese mes pero no aplican (ej. creadas después) y aún sin pago.
-  // Se excluyen las que aún no habían empezado en ese periodo.
+  // deudas que existen pero no aplican ese mes y aún sin pago
   const extra = useMemo(
     () =>
       debts.filter(
         (d) =>
           !d.archived &&
           !isDebtActiveIn(d, period) &&
-          d.startDate.slice(0, 7) <= currentPeriod() &&
           paidInPeriod(d.id, period, payments) === 0
       ),
     [debts, period, payments]
   );
 
+  // al mostrar, excluir deudas que aún no han empezado (startDate futuro respecto a hoy)
+  const extraVisible = useMemo(
+    () => extra.filter((d) => d.startDate.slice(0, 7) <= currentPeriod()),
+    [extra]
+  );
+
   const shown = useMemo(
     () =>
-      [...(generated ? [...base, ...extra] : base)].sort(
+      [...(generated ? [...base, ...extraVisible] : base)].sort(
         (a, b) => a.dueDay - b.dueDay
       ),
-    [base, extra, generated]
+    [base, extraVisible, generated]
   );
 
   const expected = shown.reduce(
@@ -65,7 +69,7 @@ export default function Payments() {
     0
   );
   const paid = totalPaid(period, payments);
-  const canGenerate = isPast && !generated && extra.length > 0;
+  const canGenerate = isPast && !generated && extraVisible.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -114,7 +118,7 @@ export default function Payments() {
         >
           <CalendarPlus className="w-4.5 h-4.5" />
           Generar pagos para este mes
-          <span className="text-muted font-normal">({extra.length})</span>
+          <span className="text-muted font-normal">({extraVisible.length})</span>
         </button>
       )}
 
