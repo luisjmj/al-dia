@@ -193,7 +193,7 @@ export async function insertPayment(
   period: string,
   amount: number,
   paidBy: string,
-  type: "cuota" | "abono" = "cuota"
+  type: "cuota" | "abono" | "skipped" = "cuota"
 ): Promise<Payment> {
   const row: Record<string, unknown> = {
     debt_id: debtId,
@@ -204,7 +204,7 @@ export async function insertPayment(
   };
   // Solo enviamos `type` para abonos: así los pagos normales siguen
   // funcionando aunque la columna aún no exista (migración pendiente).
-  if (type === "abono") row.type = "abono";
+  if (type === "abono" || type === "skipped") row.type = type;
   const { data, error } = await sb()
     .from("payments")
     .insert(row)

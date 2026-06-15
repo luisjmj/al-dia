@@ -48,15 +48,17 @@ export function expectedAmount(
 
 // Promedio de lo realmente pagado en una deuda (para estimar gastos variables).
 export function avgActualForDebt(debtId: string, payments: Payment[]): number {
-  const ps = payments.filter((p) => p.debtId === debtId);
+  const ps = payments.filter(
+    (p) => p.debtId === debtId && p.type !== "skipped" && p.type !== "abono"
+  );
   if (ps.length === 0) return 0;
   return ps.reduce((s, p) => s + p.amount, 0) / ps.length;
 }
 
-// Cuotas pagadas de una deuda a cuotas (los abonos a capital no cuentan como cuota).
+// Cuotas pagadas de una deuda a cuotas (los abonos y skips no cuentan).
 export function installmentsPaid(debt: Debt, payments: Payment[]): number {
   return payments.filter(
-    (p) => p.debtId === debt.id && p.type !== "abono"
+    (p) => p.debtId === debt.id && p.type !== "abono" && p.type !== "skipped"
   ).length;
 }
 
@@ -69,6 +71,17 @@ export function paidInPeriod(
   return payments
     .filter((p) => p.debtId === debtId && p.period === period)
     .reduce((s, p) => s + p.amount, 0);
+}
+
+// ¿La deuda está marcada como "no se paga este mes" en ese periodo?
+export function isSkippedInPeriod(
+  debtId: string,
+  period: string,
+  payments: Payment[]
+): boolean {
+  return payments.some(
+    (p) => p.debtId === debtId && p.period === period && p.type === "skipped"
+  );
 }
 
 // Total esperado del mes (suma de todas las deudas activas).

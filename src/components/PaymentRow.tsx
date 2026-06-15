@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { useStore } from "../store";
 import type { Debt } from "../types";
-import { expectedAmount, paidInPeriod } from "../lib/finance";
+import { expectedAmount, isSkippedInPeriod, paidInPeriod } from "../lib/finance";
 import { formatCOP } from "../lib/format";
 import { CategoryBadge } from "./ui";
-import { Check } from "lucide-react";
+import { Check, MinusCircle } from "lucide-react";
 
-// Fila de pago reutilizable (Pagos y Dashboard).
-// Gastos fijos: toggle de un toque. Gastos variables sin pagar: campo de monto + ✓.
 export default function PaymentRow({
   debt,
   period,
@@ -15,23 +13,51 @@ export default function PaymentRow({
   debt: Debt;
   period: string;
 }) {
-  const { payments, togglePayment, users } = useStore();
+  const { payments, togglePayment, skipPayment, users } = useStore();
   const isPaid = paidInPeriod(debt.id, period, payments) > 0;
+  const isSkipped = !isPaid && isSkippedInPeriod(debt.id, period, payments);
   const payRecord = payments.find(
-    (p) => p.debtId === debt.id && p.period === period
+    (p) => p.debtId === debt.id && p.period === period && p.type !== "skipped"
   );
   const payer = users.find((u) => u.id === payRecord?.paidById);
-  // si la deuda no está "activa" ese periodo (ej. mes pasado al generar), usamos su monto base
   const suggested = expectedAmount(debt, period, payments) || debt.amount;
 
   const [draft, setDraft] = useState<string>(String(Math.round(suggested)));
-  const paidAmount = payRecord?.amount ?? suggested;
 
   function toggle(amount?: number) {
     togglePayment(debt, period, amount);
   }
 
-  // --- Gasto variable, aún sin pagar: pedir el monto real ---
+  function skip() {
+    skipPayment(debt, period);
+  }
+
+  // --- Skipped ---
+  if (isSkipped) {
+    return (
+      <div className="card p-3.5 flex items-center gap-3 opacity-60">
+        <MinusCircle className="w-5 h-5 text-muted shrink-0" />
+        <span
+          className="w-1.5 h-9 rounded-full shrink-0"
+          style={{ backgroundColor: debt.color }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold truncate line-through text-muted">
+            {debt.name}
+          </div>
+          <div className="text-xs text-muted">no se paga este mes</div>
+        </div>
+        <button
+          onClick={skip}
+          className="text-xs text-muted hover:text-text underline shrink-0"
+        >
+          deshacer
+        </button>
+      </div>
+    );
+  }
+
+  // --- Gasto variable, aún sin pagar ---
   if (debt.variable && !isPaid) {
     return (
       <div className="card p-3.5 flex items-center gap-3">
@@ -66,33 +92,41 @@ export default function PaymentRow({
           >
             <Check className="w-4 h-4" />
           </button>
+          <button
+            onClick={skip}
+            className="p-2 text-muted hover:text-amber-400 transition"
+            title="No se paga este mes"
+          >
+            <MinusCircle className="w-4 h-4" />
+          </button>
         </div>
       </div>
     );
   }
 
-  // --- Fijo o ya pagado: toggle de una sola pulsación ---
+  // --- Fijo o ya pagado ---
   return (
-    <button
-      onClick={() => toggle(debt.variable ? paidAmount : suggested)}
-      className={`card p-3.5 flex items-center gap-3 text-left transition w-full ${
-        isPaid ? "opacity-70" : ""
-      }`}
+    <div
+      className={`card p-3.5 flex items-center gap-3 ${isPaid ? "opacity-70" : ""}`}
     >
-      <span
+      <button
+        onClick={() => toggle(debt.variable ? (payRecord?.amount ?? suggested) : suggested)}
         className={`w-7 h-7 rounded-lg grid place-items-center shrink-0 border-2 transition ${
           isPaid ? "bg-emerald-500 border-emerald-500" : "border-border"
         }`}
       >
         {isPaid && <Check className="w-4 h-4 text-white" />}
-      </span>
+      </button>
 
       <span
         className="w-1.5 h-9 rounded-full shrink-0"
         style={{ backgroundColor: debt.color }}
       />
 
-      <div className="min-w-0 flex-1">
+      <div
+        className="min-w-0 flex-1 cursor-pointer"
+        onClick={() => toggle(debt.variable ? (payRecord?.amount ?? suggested) : suggested)}
+      >
         <div
           className={`font-semibold truncate ${
             isPaid ? "line-through text-muted" : ""
@@ -116,9 +150,22 @@ export default function PaymentRow({
         </div>
       </div>
 
-      <div className="font-bold whitespace-nowrap">
-        {formatCOP(isPaid ? paidAmount : suggested)}
+      <div
+        className="font-bold whitespace-nowrap cursor-pointer"
+        onClick={() => toggle(debt.variable ? (payRecord?.amount ?? suggested) : suggested)}
+      >
+        {formatCOP(isPaid ? (payRecord?.amount ?? suggested) : suggested)}
       </div>
-    </button>
+
+      {!isPaid && (
+        <button
+          onClick={skip}
+          className="p-1.5 text-muted hover:text-amber-400 transition shrink-0"
+          title="No se paga este mes"
+        >
+          <MinusCircle className="w-4 h-4" />
+        </button>
+      )}
+    </div>
   );
 }

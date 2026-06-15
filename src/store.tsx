@@ -66,6 +66,8 @@ export interface Store {
   deleteDebt: (id: string) => void;
   // marcar / desmarcar pago del mes (toggle) con monto opcional (pago parcial)
   togglePayment: (debt: Debt, period: string, amount?: number) => void;
+  // marcar que una deuda no se paga este mes (toggle)
+  skipPayment: (debt: Debt, period: string) => void;
   // abono extra a capital en una deuda a cuotas
   abonarCapital: (debt: Debt, amount: number) => void;
   resetData: () => void;
@@ -185,7 +187,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState((s) => {
           const already = paidInPeriod(debt.id, period, s.payments);
           if (already > 0) {
-            // desmarcar: quitar pagos de ese periodo/deuda
             return {
               ...s,
               payments: s.payments.filter(
@@ -193,6 +194,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               ),
             };
           }
+          // limpiar skip si existía antes de marcar como pagado
+          const withoutSkip = s.payments.filter(
+            (p) => !(p.debtId === debt.id && p.period === period && p.type === "skipped")
+          );
           const pay: Payment = {
             id: `p_${crypto.randomUUID()}`,
             debtId: debt.id,
@@ -201,6 +206,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             paidById: state.currentUserId,
             paidAt: new Date().toISOString(),
             type: "cuota",
+          };
+          return { ...s, payments: [...withoutSkip, pay] };
+        }),
+      skipPayment: (debt, period) =>
+        setState((s) => {
+          const alreadySkipped = s.payments.some(
+            (p) => p.debtId === debt.id && p.period === period && p.type === "skipped"
+          );
+          if (alreadySkipped) {
+            return {
+              ...s,
+              payments: s.payments.filter(
+                (p) => !(p.debtId === debt.id && p.period === period && p.type === "skipped")
+              ),
+            };
+          }
+          const pay: Payment = {
+            id: `p_${crypto.randomUUID()}`,
+            debtId: debt.id,
+            period,
+            amount: 0,
+            paidById: state.currentUserId,
+            paidAt: new Date().toISOString(),
+            type: "skipped",
           };
           return { ...s, payments: [...s.payments, pay] };
         }),

@@ -5,6 +5,7 @@ import {
   totalPaid,
   isDebtActiveIn,
   paidInPeriod,
+  isSkippedInPeriod,
   projectNextMonths,
 } from "../lib/finance";
 import { currentPeriod, formatCOP, periodLabel } from "../lib/format";
@@ -43,7 +44,11 @@ export default function Dashboard() {
 
   // Próximas a vencer (no pagadas), ordenadas por día
   const upcoming = active
-    .filter((d) => paidInPeriod(d.id, period, payments) === 0)
+    .filter(
+      (d) =>
+        paidInPeriod(d.id, period, payments) === 0 &&
+        !isSkippedInPeriod(d.id, period, payments)
+    )
     .sort((a, b) => a.dueDay - b.dueDay)
     .slice(0, 5);
 

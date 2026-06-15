@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../store";
-import { isDebtActiveIn, paidInPeriod, totalPaid } from "../lib/finance";
-import { expectedAmount } from "../lib/finance";
+import { isDebtActiveIn, paidInPeriod, isSkippedInPeriod, totalPaid, expectedAmount } from "../lib/finance";
 import {
   addMonths,
   currentPeriod,
@@ -30,7 +29,8 @@ export default function Payments() {
         (d) =>
           !d.archived &&
           (isDebtActiveIn(d, period) ||
-            paidInPeriod(d.id, period, payments) > 0)
+            paidInPeriod(d.id, period, payments) > 0 ||
+            isSkippedInPeriod(d.id, period, payments))
       ),
     [debts, period, payments]
   );
@@ -56,7 +56,10 @@ export default function Payments() {
   );
 
   const expected = shown.reduce(
-    (s, d) => s + (expectedAmount(d, period, payments) || d.amount),
+    (s, d) =>
+      isSkippedInPeriod(d.id, period, payments)
+        ? s
+        : s + (expectedAmount(d, period, payments) || d.amount),
     0
   );
   const paid = totalPaid(period, payments);

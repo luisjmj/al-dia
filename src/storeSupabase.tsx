@@ -144,6 +144,16 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
             xs.filter((p) => !(p.debtId === debt.id && p.period === period))
           );
         } else {
+          // limpiar skip si existía
+          const hasSkip = payments.some(
+            (p) => p.debtId === debt.id && p.period === period && p.type === "skipped"
+          );
+          if (hasSkip) {
+            await repo.deletePayment(debt.id, period);
+            setPayments((xs) =>
+              xs.filter((p) => !(p.debtId === debt.id && p.period === period))
+            );
+          }
           const amt = amount ?? expectedAmount(debt, period);
           const created = await repo.insertPayment(
             debt.id,
@@ -151,6 +161,28 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
             period,
             amt,
             userId
+          );
+          setPayments((xs) => [...xs, created]);
+        }
+      },
+      skipPayment: async (debt, period) => {
+        if (!household || !userId) return;
+        const alreadySkipped = payments.some(
+          (p) => p.debtId === debt.id && p.period === period && p.type === "skipped"
+        );
+        if (alreadySkipped) {
+          await repo.deletePayment(debt.id, period);
+          setPayments((xs) =>
+            xs.filter((p) => !(p.debtId === debt.id && p.period === period && p.type === "skipped"))
+          );
+        } else {
+          const created = await repo.insertPayment(
+            debt.id,
+            household.id,
+            period,
+            0,
+            userId,
+            "skipped"
           );
           setPayments((xs) => [...xs, created]);
         }
