@@ -235,8 +235,8 @@ export function previewReducirCuota(
         ? (nuevoSaldo * i) / (1 - Math.pow(1 + i, -remaining))
         : nuevoSaldo / remaining
       : 0;
-  const interesAntes = remaining * cuotaActual - balance;
-  const interesDespues = remaining * nuevaCuota - nuevoSaldo;
+  const interesAntes = payoff(balance, i, cuotaActual).totalInterest;
+  const interesDespues = payoff(nuevoSaldo, i, nuevaCuota).totalInterest;
   return {
     cuotaAntes: cuotaActual,
     cuotaDespues: nuevaCuota,
