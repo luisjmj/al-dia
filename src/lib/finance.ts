@@ -88,13 +88,16 @@ export function isSkippedInPeriod(
   );
 }
 
-// Total esperado del mes (suma de todas las deudas activas).
+// Total esperado del mes (suma de todas las deudas activas, excluye skipped).
 export function totalExpected(
   debts: Debt[],
   period: string,
   payments?: Payment[]
 ): number {
-  return debts.reduce((s, d) => s + expectedAmount(d, period, payments), 0);
+  return debts.reduce((s, d) => {
+    if (payments && isSkippedInPeriod(d.id, period, payments)) return s;
+    return s + expectedAmount(d, period, payments);
+  }, 0);
 }
 
 // Total pagado en el mes.
