@@ -12,6 +12,7 @@ import {
   Check,
   UserPlus,
   Settings,
+  Power,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useStore } from "../store";
@@ -22,6 +23,19 @@ const NAV = [
   { to: "/pagos", label: "Pagos", icon: CheckSquare, end: false },
   { to: "/stats", label: "Stats", icon: BarChart3, end: false },
 ];
+
+// Cierra la app. En la PWA instalada (standalone) window.close() funciona;
+// en una pestaña normal el navegador lo bloquea, así que avisamos.
+function closeApp() {
+  if (!confirm("¿Cerrar Al Día?")) return;
+  window.close();
+  // Si seguimos aquí, el navegador no permitió cerrar (pestaña normal).
+  setTimeout(() => {
+    if (!document.hidden) {
+      alert("Para cerrar, instala la app o cierra la pestaña manualmente.");
+    }
+  }, 300);
+}
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme, loading } = useStore();
@@ -92,6 +106,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               ) : (
                 <Moon className="w-5 h-5" />
               )}
+            </button>
+            <button
+              onClick={closeApp}
+              className="btn-ghost !px-2.5 !py-2.5 hover:text-red-400"
+              aria-label="Cerrar app"
+              title="Cerrar app"
+            >
+              <Power className="w-5 h-5" />
             </button>
             <div className="md:hidden">
               <MobileMenu />
