@@ -109,7 +109,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             </button>
             <button
               onClick={closeApp}
-              className="btn-ghost !px-2.5 !py-2.5 hover:text-red-400"
+              className="btn-ghost !px-2.5 !py-2.5 hover:text-red-400 md:hidden"
               aria-label="Cerrar app"
               title="Cerrar app"
             >
