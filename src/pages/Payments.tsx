@@ -48,8 +48,9 @@ export default function Payments() {
   );
 
   // al mostrar, excluir deudas que aún no han empezado (startDate futuro respecto a hoy)
+  // excepción: noStartDate siempre aparece en "Generar pagos"
   const extraVisible = useMemo(
-    () => extra.filter((d) => d.startDate.slice(0, 7) <= currentPeriod()),
+    () => extra.filter((d) => d.noStartDate || d.startDate.slice(0, 7) <= currentPeriod()),
     [extra]
   );
 

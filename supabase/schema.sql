@@ -49,6 +49,7 @@ create table if not exists public.debts (
   color              text,
   note               text,
   url                text,                             -- enlace para "ir a pagar"
+  no_start_date      boolean not null default false,   -- recurrente sin fecha de inicio (siempre activa)
   archived           boolean not null default false,
   created_at         timestamptz default now()
 );

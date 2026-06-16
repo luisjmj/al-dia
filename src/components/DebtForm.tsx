@@ -73,6 +73,7 @@ export default function DebtForm({
   const [interestRate, setInterestRate] = useState<string>(
     e?.interestRate ? String(e.interestRate) : ""
   );
+  const [noStartDate, setNoStartDate] = useState(e?.noStartDate ?? false);
   const [variable, setVariable] = useState(e?.variable ?? false);
   const [shared, setShared] = useState(e?.shared ?? false);
   const [note, setNote] = useState(e?.note ?? "");
@@ -105,6 +106,11 @@ export default function DebtForm({
       : elapsed;
   const showPrepaid = !e && maxPrepaid > 0;
 
+  // al cambiar a un tipo distinto de recurring, desactivar noStartDate
+  useEffect(() => {
+    if (kind !== "recurring") setNoStartDate(false);
+  }, [kind]);
+
   // al cambiar la fecha/tipo, sugerimos pagar todos los meses pasados
   useEffect(() => {
     setPrepaid(String(maxPrepaid));
@@ -130,6 +136,7 @@ export default function DebtForm({
       shared,
       ownerId: e?.ownerId ?? currentUser.id,
       color: cat?.color ?? "#94a3b8",
+      noStartDate: kind === "recurring" ? noStartDate : undefined,
       note: note.trim() || undefined,
       url: url.trim() || undefined,
       archived: e?.archived,
@@ -276,16 +283,44 @@ export default function DebtForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Inicio</label>
-            <input
-              type="date"
-              className="input"
-              value={startDate}
-              onChange={(ev) => setStartDate(ev.target.value)}
-            />
-          </div>
+        {/* Sin fecha de inicio (solo recurrentes) */}
+        {kind === "recurring" && (
+          <button
+            onClick={() => setNoStartDate((s) => !s)}
+            className="flex items-center justify-between card p-3.5"
+          >
+            <div className="text-left">
+              <div className="font-semibold text-text">Sin fecha de inicio</div>
+              <div className="text-xs text-muted">
+                Siempre aparece en "Generar pagos" para meses pasados
+              </div>
+            </div>
+            <span
+              className={`w-11 h-6 rounded-full p-0.5 transition ${
+                noStartDate ? "bg-brand" : "bg-surface-2 border border-border"
+              }`}
+            >
+              <span
+                className={`block w-5 h-5 rounded-full bg-white transition ${
+                  noStartDate ? "translate-x-5" : ""
+                }`}
+              />
+            </span>
+          </button>
+        )}
+
+        <div className={`grid gap-3 ${noStartDate ? "grid-cols-1" : "grid-cols-2"}`}>
+          {!noStartDate && (
+            <div>
+              <label className="label">Inicio</label>
+              <input
+                type="date"
+                className="input"
+                value={startDate}
+                onChange={(ev) => setStartDate(ev.target.value)}
+              />
+            </div>
+          )}
           <div>
             <label className="label">Interés % E.A.</label>
             <input

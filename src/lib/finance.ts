@@ -4,6 +4,10 @@ import { addMonths, currentPeriod, monthsBetween } from "./format";
 // ¿La deuda está vigente (genera cobro) en este periodo?
 export function isDebtActiveIn(debt: Debt, period: string): boolean {
   if (debt.archived) return false;
+  // Sin fecha de inicio: activa en mes actual y futuros; en pasados aparece solo via "Generar pagos"
+  if (debt.noStartDate && debt.kind === "recurring") {
+    return period >= currentPeriod();
+  }
   const startPeriod = debt.startDate.slice(0, 7);
   const elapsed = monthsBetween(startPeriod, period);
   if (elapsed < 0) return false; // aún no empieza

@@ -40,6 +40,7 @@ export interface Debt {
   color: string;
   note?: string;
   url?: string; // enlace para "ir a pagar" (web del banco/servicio)
+  noStartDate?: boolean; // solo recurring: siempre aplica (sin fecha de inicio)
   archived?: boolean;
 }
 

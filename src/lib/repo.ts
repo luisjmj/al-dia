@@ -29,6 +29,7 @@ function rowToDebt(r: any): Debt {
     color: r.color,
     note: r.note ?? undefined,
     url: r.url ?? undefined,
+    noStartDate: r.no_start_date ?? false,
     archived: r.archived,
   };
 }
@@ -57,6 +58,8 @@ function debtToRow(d: Omit<Debt, "id">, householdId: string) {
   if (d.principal != null) row.principal = d.principal;
   // `url` solo si existe (columna de migración 004).
   if (d.url) row.url = d.url;
+  // `no_start_date` solo si true (columna de migración 006).
+  if (d.noStartDate) row.no_start_date = true;
   return row;
 }
 
