@@ -177,7 +177,7 @@ export default function DebtForm({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="min-w-0">
             <label className="label">
               {isInstallments
                 ? "Valor total (COP)"
@@ -186,17 +186,17 @@ export default function DebtForm({
                 : "Monto (COP)"}
             </label>
             <input
-              className="input"
+              className="input min-w-0"
               inputMode="numeric"
               placeholder={isInstallments ? "Total del crédito" : "150000"}
               value={amount}
               onChange={(ev) => setAmount(ev.target.value.replace(/\D/g, ""))}
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="label">Día de pago</label>
             <input
-              className="input"
+              className="input min-w-0"
               inputMode="numeric"
               value={dueDay}
               onChange={(ev) => setDueDay(ev.target.value.replace(/\D/g, ""))}
@@ -319,22 +319,26 @@ export default function DebtForm({
           </button>
         )}
 
-        <div className={`grid gap-3 ${noStartDate ? "grid-cols-1" : "grid-cols-2"}`}>
+        <div
+          className={`grid gap-3 ${
+            noStartDate ? "grid-cols-1" : "grid-cols-1 min-[480px]:grid-cols-2"
+          }`}
+        >
           {!noStartDate && (
-            <div>
+            <div className="min-w-0">
               <label className="label">Inicio</label>
               <input
                 type="date"
-                className="input"
+                className="input min-w-0"
                 value={startDate}
                 onChange={(ev) => setStartDate(ev.target.value)}
               />
             </div>
           )}
-          <div>
+          <div className="min-w-0">
             <label className="label">Interés % E.A.</label>
             <input
-              className="input"
+              className="input min-w-0"
               inputMode="decimal"
               placeholder="ej. 24 (anual)"
               value={interestRate}
