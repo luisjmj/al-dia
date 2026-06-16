@@ -1,10 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "../store";
 import {
   spendingByMonth,
   avgMonthlySpend,
   projectNextMonths,
-  byCategory,
   contributionByUser,
   totalExpected,
   isDebtActiveIn,
@@ -15,6 +14,8 @@ import {
   formatCompact,
   periodShort,
   periodLabel,
+  addMonths,
+  monthsBetween,
 } from "../lib/format";
 import { StatCard } from "../components/ui";
 import {
@@ -32,26 +33,53 @@ import {
 import { TrendingUp, Calendar, Wallet, Trophy, Download } from "lucide-react";
 import { exportToExcel } from "../lib/export";
 
+const FILTER_OPTS = [
+  { label: "3m", value: 3 },
+  { label: "6m", value: 6 },
+  { label: "12m", value: 12 },
+  { label: "Todo", value: 0 },
+];
+
 export default function Stats() {
   const { debts, payments, users, categories } = useStore();
   const period = currentPeriod();
+  const [lookback, setLookback] = useState(6);
+
   const catBy = (id: string) =>
     categories.find((c) => c.id === id) ?? {
       label: "Sin categoría",
       color: "#94a3b8",
     };
 
-  const history = useMemo(() => spendingByMonth(payments, 6), [payments]);
-  const avg = useMemo(() => avgMonthlySpend(payments), [payments]);
+  // Para "Todo": cuántos meses hay desde el primer pago
+  const effectiveLookback = useMemo(() => {
+    if (lookback !== 0) return lookback;
+    if (payments.length === 0) return 12;
+    const earliest = payments.reduce((min, p) => p.period < min ? p.period : min, payments[0].period);
+    return monthsBetween(earliest, period) + 1;
+  }, [lookback, payments, period]);
+
+  const history = useMemo(() => spendingByMonth(payments, effectiveLookback), [payments, effectiveLookback]);
+  const avg = useMemo(() => avgMonthlySpend(payments, effectiveLookback), [payments, effectiveLookback]);
   const nextMonth = useMemo(
     () => projectNextMonths(debts, payments, 1)[0],
     [debts, payments]
   );
-  const cats = useMemo(
-    () => byCategory(debts, period, payments),
-    [debts, period, payments]
-  );
-  const contrib = useMemo(() => contributionByUser(payments, 6), [payments]);
+  // Categoría: suma pagos reales del rango (no expected del mes actual)
+  const cats = useMemo(() => {
+    const from = lookback === 0 ? null : addMonths(period, -(effectiveLookback - 1));
+    const debtMap = Object.fromEntries(debts.map((d) => [d.id, d]));
+    const out: Record<string, number> = {};
+    for (const p of payments) {
+      if (p.type === "skipped" || p.type === "abono") continue;
+      if (from && p.period < from) continue;
+      if (p.period > period) continue;
+      const cat = debtMap[p.debtId]?.category ?? "otro";
+      out[cat] = (out[cat] ?? 0) + p.amount;
+    }
+    return out;
+  }, [debts, payments, period, lookback, effectiveLookback]);
+  const contrib = useMemo(() => contributionByUser(payments, effectiveLookback), [payments, effectiveLookback]);
 
   const monthExpected = totalExpected(
     debts.filter((d) => isDebtActiveIn(d, period)),
@@ -97,6 +125,24 @@ export default function Stats() {
         </button>
       </div>
 
+      {/* Filtro de rango */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted">Rango:</span>
+        {FILTER_OPTS.map((o) => (
+          <button
+            key={o.value}
+            onClick={() => setLookback(o.value)}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition border ${
+              lookback === o.value
+                ? "border-brand bg-brand-soft text-brand"
+                : "border-border bg-surface-2 text-muted hover:text-text"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           label="Gasto este mes"
@@ -107,7 +153,7 @@ export default function Stats() {
         <StatCard
           label="Promedio mensual"
           value={formatCOP(avg)}
-          sub={<span className="text-muted">últimos 6 meses</span>}
+          sub={<span className="text-muted">{lookback === 0 ? "todo el historial" : `últimos ${lookback} meses`}</span>}
           icon={<Calendar className="w-4.5 h-4.5" />}
           accent="#38bdf8"
         />
@@ -132,7 +178,7 @@ export default function Stats() {
       </div>
 
       {/* Histórico */}
-      <ChartCard title="Gasto mes a mes" subtitle="Lo que has pagado">
+      <ChartCard title="Gasto mes a mes" subtitle={lookback === 0 ? "Todo el historial" : `Últimos ${lookback} meses`}>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={histData} margin={{ top: 8, right: 8, left: 8 }}>
             <XAxis dataKey="name" stroke="rgb(var(--muted))" fontSize={12} tickLine={false} axisLine={false} />
@@ -200,7 +246,7 @@ export default function Stats() {
 
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Por categoría */}
-        <ChartCard title="Gasto por categoría" subtitle="Este mes">
+        <ChartCard title="Gasto por categoría" subtitle={lookback === 0 ? "Todo el historial" : `Últimos ${lookback} meses`}>
           {catData.length === 0 ? (
             <Empty />
           ) : (
@@ -226,7 +272,7 @@ export default function Stats() {
         </ChartCard>
 
         {/* Aporte por persona */}
-        <ChartCard title="Aporte por persona" subtitle="Últimos 6 meses">
+        <ChartCard title="Aporte por persona" subtitle={lookback === 0 ? "Todo el historial" : `Últimos ${lookback} meses`}>
           <div className="flex flex-col gap-3 pt-2">
             {users.map((u) => {
               const val = contrib[u.id] ?? 0;
