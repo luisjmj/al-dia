@@ -79,6 +79,8 @@ export default function DebtForm({
   const [note, setNote] = useState(e?.note ?? "");
   const [url, setUrl] = useState(e?.url ?? "");
   const [prepaid, setPrepaid] = useState("0");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const cat = categories.find((c) => c.id === category) ?? categories[0];
   const valid = name.trim() && Number(amount) > 0;
@@ -116,8 +118,10 @@ export default function DebtForm({
     setPrepaid(String(maxPrepaid));
   }, [maxPrepaid]);
 
-  function submit() {
-    if (!valid) return;
+  async function submit() {
+    if (!valid || submitting) return;
+    setError(null);
+    setSubmitting(true);
     const base: Omit<Debt, "id"> = {
       name: name.trim(),
       // créditos guardan la cuota mensual calculada; el resto, el monto tal cual
@@ -141,15 +145,21 @@ export default function DebtForm({
       url: url.trim() || undefined,
       archived: e?.archived,
     };
-    if (e) {
-      updateDebt({ ...base, id: e.id });
-    } else {
-      const prepaidMonths = showPrepaid
-        ? Math.min(maxPrepaid, Math.max(0, Number(prepaid) || 0))
-        : 0;
-      addDebt(base, prepaidMonths);
+    try {
+      if (e) {
+        await updateDebt({ ...base, id: e.id });
+      } else {
+        const prepaidMonths = showPrepaid
+          ? Math.min(maxPrepaid, Math.max(0, Number(prepaid) || 0))
+          : 0;
+        await addDebt(base, prepaidMonths);
+      }
+      onClose();
+    } catch (err) {
+      console.error("Error guardando deuda:", err);
+      setError("No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.");
+      setSubmitting(false);
     }
-    onClose();
   }
 
   return (
@@ -464,13 +474,26 @@ export default function DebtForm({
           </span>
         </button>
 
-        <div className="flex gap-2 pt-1">
-          <button className="btn-ghost flex-1" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="btn-primary flex-1" disabled={!valid} onClick={submit}>
-            {e ? "Guardar" : "Crear deuda"}
-          </button>
+        <div className="sticky bottom-0 -mx-5 -mb-5 mt-1 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] bg-surface border-t border-border flex flex-col gap-2">
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn-ghost flex-1"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-primary flex-1"
+              disabled={!valid || submitting}
+              onClick={submit}
+            >
+              {submitting ? "Guardando…" : e ? "Guardar" : "Crear deuda"}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

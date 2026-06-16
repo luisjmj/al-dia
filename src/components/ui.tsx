@@ -1,5 +1,5 @@
 import * as Icons from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { readableText } from "../lib/format";
 import { useStore } from "../store";
 
@@ -97,19 +97,39 @@ export function Modal({
   title: string;
   children: ReactNode;
 }) {
+  // Cerrar solo si el gesto EMPEZÓ en el backdrop (no al terminar un scroll ahí).
+  const downOnBackdrop = useRef(false);
+
+  // Bloquear el scroll del body mientras el modal está abierto (evita que iOS
+  // mueva el fondo y confunda el scroll del modal).
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      onPointerDown={(e) => {
+        downOnBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && downOnBackdrop.current) onClose();
+      }}
     >
-      <div
-        className="bg-surface border border-border w-full md:max-w-lg md:rounded-2xl rounded-t-2xl max-h-[92vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-surface flex items-center justify-between px-5 py-4 border-b border-border">
+      <div className="bg-surface border border-border w-full md:max-w-lg md:rounded-2xl rounded-t-2xl max-h-[92dvh] overflow-y-auto overscroll-contain">
+        <div className="sticky top-0 z-10 bg-surface flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="text-lg font-bold">{title}</h2>
-          <button onClick={onClose} className="text-muted hover:text-text">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted hover:text-text"
+          >
             <Icons.X className="w-5 h-5" />
           </button>
         </div>
