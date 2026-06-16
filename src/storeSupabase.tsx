@@ -101,10 +101,9 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
         // registrar meses pasados ya pagados
         if (prepaidMonths && prepaidMonths > 0 && userId) {
           const startPeriod = d.startDate.slice(0, 7);
-          const nuevos: Payment[] = [];
-          for (let i = 0; i < prepaidMonths; i++) {
-            nuevos.push(
-              await repo.insertPayment(
+          const nuevos = await Promise.all(
+            Array.from({ length: prepaidMonths }, (_, i) =>
+              repo.insertPayment(
                 created.id,
                 household.id,
                 addMonths(startPeriod, i),
@@ -112,8 +111,8 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
                 userId,
                 "cuota"
               )
-            );
-          }
+            )
+          );
           setPayments((ps) => [...ps, ...nuevos]);
         }
       },

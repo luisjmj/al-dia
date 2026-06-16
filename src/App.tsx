@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { StoreProvider, loadTheme } from "./store";
 import { SupabaseStoreProvider } from "./storeSupabase";
@@ -5,11 +6,14 @@ import { AuthProvider, useAuth, hasSupabase } from "./auth";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Debts from "./pages/Debts";
-import Payments from "./pages/Payments";
-import Stats from "./pages/Stats";
-import Admin from "./pages/Admin";
 import { CheckCircle2 } from "lucide-react";
+
+// Rutas secundarias en chunks aparte. Stats arrastra recharts + xlsx (pesados),
+// así que mantenerla fuera del bundle inicial acelera la carga del Dashboard.
+const Debts = lazy(() => import("./pages/Debts"));
+const Payments = lazy(() => import("./pages/Payments"));
+const Stats = lazy(() => import("./pages/Stats"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 // aplica el tema guardado al cargar
 loadTheme();
@@ -19,13 +23,15 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/deudas" element={<Debts />} />
-          <Route path="/pagos" element={<Payments />} />
-          <Route path="/stats" element={<Stats />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
+        <Suspense fallback={<Splash />}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/deudas" element={<Debts />} />
+            <Route path="/pagos" element={<Payments />} />
+            <Route path="/stats" element={<Stats />} />
+            <Route path="/admin" element={<Admin />} />
+          </Routes>
+        </Suspense>
       </Layout>
     </BrowserRouter>
   );
