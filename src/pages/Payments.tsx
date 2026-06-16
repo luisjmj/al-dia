@@ -21,6 +21,7 @@ export default function Payments() {
   useEffect(() => setGenerated(false), [period]);
 
   const isPast = period < currentPeriod();
+  const isFuture = period > currentPeriod();
 
   // deudas que se muestran normalmente: activas ese mes, o con pago ya hecho ese mes
   const base = useMemo(
@@ -72,6 +73,12 @@ export default function Payments() {
   const paid = totalPaid(period, payments);
   const canGenerate = isPast && !generated && extraVisible.length > 0;
 
+  const hint = isPast
+    ? 'Marca las deudas que pagaste este mes. Usa “Generar pagos” para incluir las demás.'
+    : isFuture
+      ? 'Puedes adelantar pagos para este mes antes de que llegue.'
+      : 'Toca una deuda para marcarla como pagada. En los gastos variables, escribe cuánto costó este mes.';
+
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-2xl font-extrabold tracking-tight">Pagos del mes</h1>
@@ -93,7 +100,7 @@ export default function Payments() {
         <button
           className="p-2 rounded-lg hover:bg-surface-2 text-muted disabled:opacity-30"
           onClick={() => setPeriod((p) => addMonths(p, 1))}
-          disabled={period >= currentPeriod()}
+          disabled={period >= addMonths(currentPeriod(), 3)}
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -123,11 +130,7 @@ export default function Payments() {
         </button>
       )}
 
-      <p className="text-xs text-muted text-center">
-        {isPast
-          ? "Marca las deudas que pagaste este mes. Usa “Generar pagos” para incluir las demás."
-          : "Toca una deuda para marcarla como pagada. En los gastos variables, escribe cuánto costó este mes."}
-      </p>
+      <p className="text-xs text-muted text-center">{hint}</p>
     </div>
   );
 }
