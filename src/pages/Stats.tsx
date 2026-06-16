@@ -29,7 +29,8 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { TrendingUp, Calendar, Wallet, Trophy } from "lucide-react";
+import { TrendingUp, Calendar, Wallet, Trophy, Download } from "lucide-react";
+import { exportToExcel } from "../lib/export";
 
 export default function Stats() {
   const { debts, payments, users, categories } = useStore();
@@ -84,7 +85,17 @@ export default function Stats() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-extrabold tracking-tight">Estadísticas</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-extrabold tracking-tight">Estadísticas</h1>
+        <button
+          onClick={() => exportToExcel(payments, debts, users)}
+          className="btn-ghost !px-3 !py-2 text-sm flex items-center gap-2"
+          title="Exportar a Excel"
+        >
+          <Download className="w-4 h-4" />
+          Exportar
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
