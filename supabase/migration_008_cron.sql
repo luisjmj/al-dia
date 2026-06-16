@@ -8,10 +8,15 @@ create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
 -- Guarda el service_role key en Vault (una sola vez). Reemplaza el valor.
--- Si ya existe, primero: select vault.update_secret((select id from vault.secrets where name='service_role_key'), 'NUEVO_VALOR');
-insert into vault.secrets (name, secret)
-select 'service_role_key', 'PEGA_AQUI_TU_SERVICE_ROLE_KEY'
-where not exists (select 1 from vault.secrets where name = 'service_role_key');
+-- Usa vault.create_secret (insertar directo en vault.secrets da
+-- "permission denied for function _crypto_aead_det_noncegen").
+-- Si ya existe, actualízalo con vault.update_secret(<id>, 'NUEVO_VALOR').
+do $$
+begin
+  if not exists (select 1 from vault.secrets where name = 'service_role_key') then
+    perform vault.create_secret('PEGA_AQUI_TU_SERVICE_ROLE_KEY', 'service_role_key');
+  end if;
+end $$;
 
 -- (Re)programa el job.
 select cron.unschedule('notify-due-daily')
