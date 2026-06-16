@@ -62,7 +62,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-8 h-16 border-b border-border bg-bg/80 backdrop-blur">
+        <header className="sticky top-0 z-20 flex items-center justify-between px-4 md:px-8 h-16 border-b border-border bg-bg/80 backdrop-blur pt-[env(safe-area-inset-top)] box-content">
           <div className="flex items-center gap-2 md:hidden">
             <div className="w-8 h-8 rounded-lg bg-brand grid place-items-center">
               <CheckCircle2 className="w-5 h-5 text-white" />

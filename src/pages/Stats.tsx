@@ -160,7 +160,7 @@ export default function Stats() {
       </div>
 
       {/* Filtro de rango */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted">Rango:</span>
         {FILTER_OPTS.map((o) => (
           <button

@@ -60,7 +60,7 @@ export default function PaymentRow({
   // --- Gasto variable, aún sin pagar ---
   if (debt.variable && !isPaid) {
     return (
-      <div className="card p-3.5 flex items-center gap-3">
+      <div className="card p-3.5 flex items-center gap-3 flex-wrap">
         <span
           className="w-1.5 h-9 rounded-full shrink-0"
           style={{ backgroundColor: debt.color }}
@@ -74,7 +74,7 @@ export default function PaymentRow({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
           <div className="relative">
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-sm">
               $

@@ -99,22 +99,15 @@ function CategoryRow({
 
   return (
     <div className="card p-3">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* preview del tag */}
         <span
-          className="chip font-semibold shrink-0"
+          className="chip font-semibold min-w-0 flex-1"
           style={{ backgroundColor: cat.color, color: readableText(cat.color) }}
         >
-          <Icon name={cat.icon} className="w-3.5 h-3.5" />
-          {label || "—"}
+          <Icon name={cat.icon} className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{label || "—"}</span>
         </span>
-
-        <input
-          className="input !py-2 flex-1 min-w-0"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={() => label.trim() && onUpdate({ ...cat, label: label.trim() })}
-        />
 
         {/* ícono */}
         <button
@@ -149,6 +142,13 @@ function CategoryRow({
           </button>
         )}
       </div>
+
+      <input
+        className="input !py-2 mt-2"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        onBlur={() => label.trim() && onUpdate({ ...cat, label: label.trim() })}
+      />
 
       {/* selector de paleta + íconos */}
       {pickIcon && (
