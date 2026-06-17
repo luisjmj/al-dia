@@ -78,7 +78,96 @@ export function eaToMonthly(eaPercent: number): number {
   return Math.pow(1 + eaPercent / 100, 1 / 12) - 1;
 }
 
+// Plan de pagos de un crédito SEMANAL/QUINCENAL: cuota fija por semana, sin
+// interés (el monto es directo). Una fila por cuota, con la fecha de esa semana.
+function buildWeeklySchedule(debt: Debt, payments: Payment[]): Amortization {
+  const cuota = debt.amount;
+  const n = debt.installmentsTotal ?? 0;
+  const step = debt.frequency === "weekly" ? 7 : 14;
+
+  const pad = (x: number) => String(x).padStart(2, "0");
+  const isoD = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  const [Y, M, D] = debt.startDate.split("-").map(Number);
+  const anchor = new Date(Y, M - 1, D);
+  anchor.setDate(anchor.getDate() + ((debt.dueDay - anchor.getDay() + 7) % 7));
+
+  const paidPeriods = new Set(
+    payments
+      .filter((p) => p.debtId === debt.id && (p.type ?? "cuota") === "cuota")
+      .map((p) => p.period)
+  );
+  const abonos = payments.filter(
+    (p) => p.debtId === debt.id && p.type === "abono"
+  );
+  const abonoTotal = abonos.reduce((s, p) => s + p.amount, 0);
+
+  const principal = cuota * n; // total a pagar (sin interés)
+  let balance = principal;
+  const rows: ScheduleRow[] = [];
+  let paidCount = 0;
+
+  for (let k = 0; k < n; k++) {
+    const d = new Date(anchor);
+    d.setDate(anchor.getDate() + k * step);
+    const period = isoD(d);
+    const paid = paidPeriods.has(period);
+    const cap = Math.min(cuota, balance);
+    balance = Math.max(0, balance - cap);
+    if (paid) paidCount++;
+    rows.push({
+      n: k + 1,
+      period,
+      type: "cuota",
+      payment: cuota,
+      interest: 0,
+      principal: cap,
+      balance,
+      paid,
+    });
+  }
+  for (const ab of abonos) {
+    const cap = Math.min(ab.amount, balance);
+    balance = Math.max(0, balance - cap);
+    rows.push({
+      n: null,
+      period: ab.period,
+      type: "abono",
+      payment: ab.amount,
+      interest: 0,
+      principal: cap,
+      balance,
+      paid: true,
+    });
+  }
+
+  const currentBalance = Math.max(0, principal - paidCount * cuota - abonoTotal);
+  const remaining = rows.filter((r) => !r.paid && r.type === "cuota").length;
+  return {
+    principal,
+    cuota,
+    rate: 0,
+    rows,
+    paidCount,
+    totalCuotas: n,
+    balance: currentBalance,
+    remaining,
+    totalInterest: 0,
+    interestPaid: 0,
+    totalToPay: principal,
+  };
+}
+
 export function buildAmortization(debt: Debt, payments: Payment[]): Amortization {
+  // Semanal / quincenal: plan por semanas, sin interés.
+  if (
+    (debt.frequency === "weekly" || debt.frequency === "biweekly") &&
+    debt.kind !== "one_time"
+  ) {
+    return buildWeeklySchedule(debt, payments);
+  }
+
   const i = eaToMonthly(debt.interestRate ?? 0);
   const cuota = debt.amount;
   const n = debt.installmentsTotal ?? 0;

@@ -6,7 +6,7 @@ import {
   previewAbono,
   previewReducirCuota,
 } from "../lib/amortization";
-import { formatCOP, periodLabel } from "../lib/format";
+import { formatCOP, periodLabel, slotLabel } from "../lib/format";
 import { Modal, ProgressBar } from "./ui";
 import { TrendingDown, Check, Coins, Wallet } from "lucide-react";
 
@@ -24,6 +24,7 @@ export default function InstallmentDetail({
     () => buildAmortization(debt, payments),
     [debt, payments]
   );
+  const weekly = debt.frequency === "weekly" || debt.frequency === "biweekly";
 
   const [abono, setAbono] = useState("");
   const [modalidad, setModalidad] = useState<Modalidad | null>(null);
@@ -106,7 +107,7 @@ export default function InstallmentDetail({
             label="Interés total"
             value={formatCOP(amort.totalInterest)}
             sub={
-              debt.interestRate && debt.interestRate > 0
+              !weekly && debt.interestRate && debt.interestRate > 0
                 ? `${debt.interestRate}% E.A. (${(amort.rate * 100).toFixed(2)}% mes)`
                 : "sin interés"
             }
@@ -171,7 +172,11 @@ export default function InstallmentDetail({
                   <ModBtn
                     active={modalidad === "cuota"}
                     title="Reducir valor cuota"
-                    desc="Mismo plazo, pagas menos al mes"
+                    desc={
+                      weekly
+                        ? "Mismo plazo, pagas menos por cuota"
+                        : "Mismo plazo, pagas menos al mes"
+                    }
                     onClick={() => setModalidad("cuota")}
                   />
                 </div>
@@ -235,7 +240,9 @@ export default function InstallmentDetail({
                 <thead className="sticky top-0 bg-surface-2 text-muted text-xs">
                   <tr>
                     <th className="text-left font-medium px-3 py-2">#</th>
-                    <th className="text-left font-medium px-2 py-2">Mes</th>
+                    <th className="text-left font-medium px-2 py-2">
+                      {weekly ? "Semana" : "Mes"}
+                    </th>
                     <th className="text-right font-medium px-2 py-2">Cuota</th>
                     <th className="text-right font-medium px-2 py-2">Interés</th>
                     <th className="text-right font-medium px-2 py-2">Capital</th>
@@ -269,7 +276,7 @@ export default function InstallmentDetail({
                         )}
                       </td>
                       <td className="px-2 py-2 text-muted">
-                        {periodLabel(r.period)}
+                        {slotLabel(r.period) ?? periodLabel(r.period)}
                       </td>
                       <td className="px-2 py-2 text-right">
                         {formatCOP(r.payment)}
