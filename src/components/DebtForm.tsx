@@ -26,6 +26,17 @@ const FREQ_OPTS: { id: Frequency; label: string }[] = [
   { id: "weekly", label: "Semanal" },
 ];
 
+// Día de la semana, orden Lunes→Domingo; `value` = Date.getDay() (0=Dom).
+const WEEKDAY_OPTS: { value: number; label: string }[] = [
+  { value: 1, label: "L" },
+  { value: 2, label: "M" },
+  { value: 3, label: "X" },
+  { value: 4, label: "J" },
+  { value: 5, label: "V" },
+  { value: 6, label: "S" },
+  { value: 0, label: "D" },
+];
+
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -47,7 +58,9 @@ export default function DebtForm({
   // desde la cuota almacenada.
   const [amount, setAmount] = useState<string>(() => {
     if (!e) return "";
-    if (e.kind === "installments") {
+    const eSubMonthly =
+      e.frequency === "weekly" || e.frequency === "biweekly";
+    if (e.kind === "installments" && !eSubMonthly) {
       // mostramos el total: el guardado (principal) o el reconstruido desde la cuota
       const total =
         e.principal ??
@@ -85,9 +98,14 @@ export default function DebtForm({
   const cat = categories.find((c) => c.id === category) ?? categories[0];
   const valid = name.trim() && Number(amount) > 0;
 
-  // Para créditos: el campo es el TOTAL; la cuota mensual se calcula.
+  // Semanal / quincenal: un pago por semana, con día de la semana.
+  const subMonthly =
+    (frequency === "weekly" || frequency === "biweekly") && kind !== "one_time";
   const isInstallments = kind === "installments";
-  const cuotaMensual = isInstallments
+  // Solo los créditos MENSUALES amortizan (total -> cuota). En los semanales el
+  // monto es directo por semana (decisión del usuario).
+  const amortizing = isInstallments && !subMonthly;
+  const cuotaMensual = amortizing
     ? cuotaFromTotal(
         Number(amount) || 0,
         Number(interestRate) || 0,
@@ -106,12 +124,24 @@ export default function DebtForm({
       : kind === "installments"
       ? Math.min(elapsed, Number(installmentsTotal) || elapsed)
       : elapsed;
-  const showPrepaid = !e && maxPrepaid > 0;
+  const showPrepaid = !e && maxPrepaid > 0 && !subMonthly;
 
   // al cambiar a un tipo distinto de recurring, desactivar noStartDate
   useEffect(() => {
     if (kind !== "recurring") setNoStartDate(false);
   }, [kind]);
+
+  // al pasar a semanal/quincenal, `dueDay` pasa a ser día de semana (0-6):
+  // si traía un día del mes (>6), lo ponemos en Viernes por defecto.
+  useEffect(() => {
+    if (subMonthly) {
+      setNoStartDate(false);
+      setDueDay((d) => (Number(d) > 6 ? "5" : d));
+    } else {
+      // al volver a mensual, si quedó un día de semana chico, sugerimos 5
+      setDueDay((d) => (Number(d) < 1 ? "5" : d));
+    }
+  }, [subMonthly]);
 
   // al cambiar la fecha/tipo, sugerimos pagar todos los meses pasados
   useEffect(() => {
@@ -124,14 +154,17 @@ export default function DebtForm({
     setSubmitting(true);
     const base: Omit<Debt, "id"> = {
       name: name.trim(),
-      // créditos guardan la cuota mensual calculada; el resto, el monto tal cual
-      amount: isInstallments ? Math.round(cuotaMensual) : Number(amount),
-      // total financiado original (solo créditos a cuotas)
-      principal: isInstallments ? Number(amount) : undefined,
+      // créditos mensuales guardan la cuota calculada; el resto, el monto tal cual
+      amount: amortizing ? Math.round(cuotaMensual) : Number(amount),
+      // total financiado original (solo créditos mensuales que amortizan)
+      principal: amortizing ? Number(amount) : undefined,
       kind,
       frequency,
       category,
-      dueDay: Math.min(31, Math.max(1, Number(dueDay) || 1)),
+      // semanal/quincenal: día de semana (0-6); mensual: día del mes (1-31)
+      dueDay: subMonthly
+        ? Math.min(6, Math.max(0, Number(dueDay) || 0))
+        : Math.min(31, Math.max(1, Number(dueDay) || 1)),
       startDate,
       installmentsTotal:
         kind === "installments" ? Number(installmentsTotal) : undefined,
@@ -176,33 +209,62 @@ export default function DebtForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={`grid gap-3 ${subMonthly ? "grid-cols-1" : "grid-cols-2"}`}>
           <div className="min-w-0">
             <label className="label">
-              {isInstallments
+              {amortizing
                 ? "Valor total (COP)"
                 : variable
                 ? "Monto estimado (COP)"
+                : subMonthly
+                ? frequency === "weekly"
+                  ? "Monto semanal (COP)"
+                  : "Monto quincenal (COP)"
                 : "Monto (COP)"}
             </label>
             <input
               className="input min-w-0"
               inputMode="numeric"
-              placeholder={isInstallments ? "Total del crédito" : "150000"}
+              placeholder={amortizing ? "Total del crédito" : "150000"}
               value={amount}
               onChange={(ev) => setAmount(ev.target.value.replace(/\D/g, ""))}
             />
           </div>
-          <div className="min-w-0">
-            <label className="label">Día de pago</label>
-            <input
-              className="input min-w-0"
-              inputMode="numeric"
-              value={dueDay}
-              onChange={(ev) => setDueDay(ev.target.value.replace(/\D/g, ""))}
-            />
-          </div>
+          {!subMonthly && (
+            <div className="min-w-0">
+              <label className="label">Día de pago</label>
+              <input
+                className="input min-w-0"
+                inputMode="numeric"
+                value={dueDay}
+                onChange={(ev) => setDueDay(ev.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+          )}
         </div>
+
+        {/* Día de la semana (semanal / quincenal) */}
+        {subMonthly && (
+          <div>
+            <label className="label">Día de la semana</label>
+            <div className="grid grid-cols-7 gap-1.5">
+              {WEEKDAY_OPTS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setDueDay(String(o.value))}
+                  className={`py-2 rounded-xl border text-sm font-semibold transition ${
+                    Number(dueDay) === o.value
+                      ? "border-brand bg-brand-soft text-brand"
+                      : "border-border bg-surface-2 text-muted hover:text-text"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tipo de duración */}
         <div>
@@ -230,7 +292,13 @@ export default function DebtForm({
 
         {kind === "installments" && (
           <div>
-            <label className="label">Número de cuotas</label>
+            <label className="label">
+              {subMonthly
+                ? frequency === "weekly"
+                  ? "Número de cuotas (semanas)"
+                  : "Número de cuotas (quincenas)"
+                : "Número de cuotas"}
+            </label>
             <input
               className="input"
               inputMode="numeric"
@@ -293,8 +361,8 @@ export default function DebtForm({
           </div>
         </div>
 
-        {/* Sin fecha de inicio (solo recurrentes) */}
-        {kind === "recurring" && (
+        {/* Sin fecha de inicio (solo recurrentes mensuales) */}
+        {kind === "recurring" && !subMonthly && (
           <button
             onClick={() => setNoStartDate((s) => !s)}
             className="flex items-center justify-between card p-3.5"

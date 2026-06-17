@@ -1,9 +1,107 @@
 import type { Debt, Payment } from "../types";
-import { addMonths, currentPeriod, monthsBetween } from "./format";
+import { addMonths, currentPeriod, monthsBetween, monthOf } from "./format";
+
+// --- Frecuencias sub-mensuales (semanal / quincenal) ---
+// Estas deudas generan un pago por OCURRENCIA; el `period` de cada pago es la
+// fecha "yyyy-mm-dd" de esa semana. `dueDay` guarda el día de la semana (0=Dom..6=Sáb).
+export function isSubMonthly(debt: Debt): boolean {
+  return (
+    (debt.frequency === "weekly" || debt.frequency === "biweekly") &&
+    debt.kind !== "one_time"
+  );
+}
+
+function intervalDays(debt: Debt): number {
+  return debt.frequency === "weekly" ? 7 : 14;
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+function isoOf(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// Primera ocurrencia: la fecha >= startDate cuyo día de semana == dueDay.
+function firstOccurrence(debt: Debt): Date {
+  const [Y, M, D] = debt.startDate.split("-").map(Number);
+  const d = new Date(Y, M - 1, D);
+  const diff = (debt.dueDay - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+// Fechas "yyyy-mm-dd" de una deuda sub-mensual dentro del mes "yyyy-mm".
+// Respeta inicio, cadencia (7/14 días) y, en créditos, el nº de cuotas.
+export function occurrencesInMonth(debt: Debt, month: string): string[] {
+  if (debt.archived || !isSubMonthly(debt)) return [];
+  const [y, m] = month.split("-").map(Number);
+  const monthStart = new Date(y, m - 1, 1);
+  const monthEnd = new Date(y, m, 0); // último día del mes (00:00)
+  const anchor = firstOccurrence(debt);
+  const step = intervalDays(debt);
+  const cap =
+    debt.kind === "installments" ? debt.installmentsTotal ?? 0 : Infinity;
+
+  let idx = 0;
+  if (anchor < monthStart) {
+    const days = Math.round(
+      (monthStart.getTime() - anchor.getTime()) / 86400000
+    );
+    idx = Math.ceil(days / step);
+  }
+  const out: string[] = [];
+  while (idx < cap) {
+    const occ = new Date(anchor);
+    occ.setDate(anchor.getDate() + idx * step);
+    if (occ > monthEnd) break;
+    if (occ >= monthStart) out.push(isoOf(occ));
+    idx++;
+  }
+  return out;
+}
+
+// Fecha ISO comparable de un "slot" (para ordenar filas dentro de un mes).
+export function slotDateOf(debt: Debt, period: string): string {
+  if (period.length > 7) return period; // ya es una fecha (semanal)
+  const [y, m] = period.split("-").map(Number);
+  const dim = new Date(y, m, 0).getDate();
+  const day = Math.min(Math.max(1, debt.dueDay), dim);
+  return `${period}-${pad2(day)}`;
+}
+
+// Slots (periodos) de una deuda en un mes: para mensuales es [mes] si está
+// activa; para sub-mensuales, una entrada por semana. Incluye periodos con pago.
+export function slotsForDebtInMonth(
+  debt: Debt,
+  month: string,
+  payments: Payment[]
+): string[] {
+  const set = new Set<string>(
+    isSubMonthly(debt)
+      ? occurrencesInMonth(debt, month)
+      : isDebtActiveIn(debt, month)
+      ? [month]
+      : []
+  );
+  for (const p of payments) {
+    if (p.debtId === debt.id && monthOf(p.period) === month) set.add(p.period);
+  }
+  return [...set].sort((a, b) =>
+    slotDateOf(debt, a).localeCompare(slotDateOf(debt, b))
+  );
+}
 
 // ¿La deuda está vigente (genera cobro) en este periodo?
+// `period` puede ser un mes ("yyyy-mm") o un slot semanal ("yyyy-mm-dd").
 export function isDebtActiveIn(debt: Debt, period: string): boolean {
   if (debt.archived) return false;
+
+  if (isSubMonthly(debt)) {
+    const occ = occurrencesInMonth(debt, monthOf(period));
+    return period.length > 7 ? occ.includes(period) : occ.length > 0;
+  }
+
   // Sin fecha de inicio: activa en mes actual y futuros; en pasados aparece solo via "Generar pagos"
   if (debt.noStartDate && debt.kind === "recurring") {
     return period >= currentPeriod();
@@ -43,11 +141,25 @@ export function expectedAmount(
     return debt.amount; // estimado del usuario
   }
 
-  // Cuotas: la cuota es fija (el interés va dentro de ella, ver lib/amortization).
-  let base = debt.amount;
-  if (debt.frequency === "biweekly") base = debt.amount * 2;
-  if (debt.frequency === "weekly") base = debt.amount * 4;
-  return base;
+  // `amount` es el monto por ocurrencia: por mes (mensual) o por semana
+  // (semanal/quincenal, donde cada semana es un pago aparte).
+  return debt.amount;
+}
+
+// Total esperado de UNA deuda en un mes. Para sub-mensuales suma sus semanas.
+export function expectedForMonth(
+  debt: Debt,
+  month: string,
+  payments?: Payment[]
+): number {
+  if (isSubMonthly(debt)) {
+    return occurrencesInMonth(debt, month).reduce((s, occ) => {
+      if (payments && isSkippedInPeriod(debt.id, occ, payments)) return s;
+      return s + expectedAmount(debt, occ, payments);
+    }, 0);
+  }
+  if (payments && isSkippedInPeriod(debt.id, month, payments)) return 0;
+  return expectedAmount(debt, month, payments);
 }
 
 // Promedio de lo realmente pagado en una deuda (para estimar gastos variables).
@@ -94,16 +206,13 @@ export function totalExpected(
   period: string,
   payments?: Payment[]
 ): number {
-  return debts.reduce((s, d) => {
-    if (payments && isSkippedInPeriod(d.id, period, payments)) return s;
-    return s + expectedAmount(d, period, payments);
-  }, 0);
+  return debts.reduce((s, d) => s + expectedForMonth(d, period, payments), 0);
 }
 
-// Total pagado en el mes.
+// Total pagado en el mes (agrupa por mes; los pagos semanales tienen fecha).
 export function totalPaid(period: string, payments: Payment[]): number {
   return payments
-    .filter((p) => p.period === period)
+    .filter((p) => monthOf(p.period) === period)
     .reduce((s, p) => s + p.amount, 0);
 }
 
@@ -162,7 +271,7 @@ export function projectNextMonths(
   const histAvg = avgMonthlySpend(payments);
   const recurringFixed = debts
     .filter((d) => d.kind === "recurring")
-    .reduce((s, d) => s + expectedAmount(d, cur), 0);
+    .reduce((s, d) => s + expectedForMonth(d, cur), 0);
   const variableCushion = Math.max(0, histAvg - recurringFixed);
 
   for (let i = 1; i <= months; i++) {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useStore } from "../store";
 import type { Debt } from "../types";
 import { expectedAmount, isSkippedInPeriod, paidInPeriod } from "../lib/finance";
-import { formatCOP } from "../lib/format";
+import { formatCOP, slotLabel } from "../lib/format";
 import { CategoryBadge } from "./ui";
 import { Check, MinusCircle } from "lucide-react";
 
@@ -21,6 +21,8 @@ export default function PaymentRow({
   );
   const payer = users.find((u) => u.id === payRecord?.paidById);
   const suggested = expectedAmount(debt, period, payments) || debt.amount;
+  // Etiqueta de vencimiento: fecha de la semana (semanal) o "día N" (mensual).
+  const whenLabel = slotLabel(period) ?? `día ${debt.dueDay}`;
 
   const [draft, setDraft] = useState<string>(String(Math.round(suggested)));
 
@@ -69,9 +71,7 @@ export default function PaymentRow({
           <div className="font-semibold truncate">{debt.name}</div>
           <div className="flex items-center gap-2 mt-0.5">
             <CategoryBadge id={debt.category} />
-            <span className="text-xs text-muted">
-              variable · día {debt.dueDay}
-            </span>
+            <span className="text-xs text-muted">variable · {whenLabel}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
@@ -145,7 +145,7 @@ export default function PaymentRow({
             </span>
           )}
           {!isPaid && (
-            <span className="text-xs text-muted">día {debt.dueDay}</span>
+            <span className="text-xs text-muted">{whenLabel}</span>
           )}
         </div>
       </div>

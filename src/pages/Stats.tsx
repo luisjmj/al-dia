@@ -12,6 +12,7 @@ import {
   periodShort,
   periodLabel,
   addMonths,
+  monthOf,
 } from "../lib/format";
 import { StatCard } from "../components/ui";
 import {
@@ -58,7 +59,10 @@ export default function Stats() {
     if (filter === "12m") return { from: addMonths(cur, -11), to: cur };
     // all: desde el primer pago hasta hoy
     if (payments.length === 0) return { from: cur, to: cur };
-    const earliest = payments.reduce((min, p) => p.period < min ? p.period : min, payments[0].period);
+    const earliest = payments.reduce(
+      (min, p) => (monthOf(p.period) < min ? monthOf(p.period) : min),
+      monthOf(payments[0].period)
+    );
     return { from: earliest, to: cur };
   }, [filter, payments]);
 
@@ -74,7 +78,12 @@ export default function Stats() {
     let p = range.from;
     while (p <= range.to) {
       const total = payments
-        .filter((pay) => pay.period === p && pay.type !== "skipped" && pay.type !== "abono")
+        .filter(
+          (pay) =>
+            monthOf(pay.period) === p &&
+            pay.type !== "skipped" &&
+            pay.type !== "abono"
+        )
         .reduce((s, pay) => s + pay.amount, 0);
       rows.push({ name: periodShort(p), total: Math.round(total) });
       p = addMonths(p, 1);
@@ -100,7 +109,8 @@ export default function Stats() {
     const out: Record<string, number> = {};
     for (const p of payments) {
       if (p.type === "skipped" || p.type === "abono") continue;
-      if (p.period < range.from || p.period > range.to) continue;
+      const mp = monthOf(p.period);
+      if (mp < range.from || mp > range.to) continue;
       const cat = debtMap[p.debtId]?.category ?? "otro";
       out[cat] = (out[cat] ?? 0) + p.amount;
     }
@@ -112,7 +122,8 @@ export default function Stats() {
     const out: Record<string, number> = {};
     for (const p of payments) {
       if (p.type === "skipped" || p.type === "abono") continue;
-      if (p.period < range.from || p.period > range.to) continue;
+      const mp = monthOf(p.period);
+      if (mp < range.from || mp > range.to) continue;
       out[p.paidById] = (out[p.paidById] ?? 0) + p.amount;
     }
     return out;

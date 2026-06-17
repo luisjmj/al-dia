@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../store";
-import { isDebtActiveIn, paidInPeriod, isSkippedInPeriod, totalPaid, expectedAmount } from "../lib/finance";
+import {
+  isDebtActiveIn,
+  isSkippedInPeriod,
+  totalPaid,
+  expectedAmount,
+  isSubMonthly,
+  occurrencesInMonth,
+  slotsForDebtInMonth,
+  slotDateOf,
+} from "../lib/finance";
 import {
   addMonths,
   currentPeriod,
   formatCOP,
+  monthOf,
   periodLabel,
 } from "../lib/format";
 import { ProgressBar, EmptyState } from "../components/ui";
@@ -23,51 +33,62 @@ export default function Payments() {
   const isPast = period < currentPeriod();
   const isFuture = period > currentPeriod();
 
-  // deudas que se muestran normalmente: activas ese mes, o con pago ya hecho ese mes
+  // ¿la deuda tiene algún pago/skip registrado en este mes?
+  const hasActivity = (id: string) =>
+    payments.some((p) => p.debtId === id && monthOf(p.period) === period);
+
+  // Slots (filas) normales: deudas activas ese mes o con pago ese mes,
+  // expandiendo las sub-mensuales en una fila por semana.
   const base = useMemo(
     () =>
-      debts.filter(
-        (d) =>
-          !d.archived &&
-          (isDebtActiveIn(d, period) ||
-            paidInPeriod(d.id, period, payments) > 0 ||
-            isSkippedInPeriod(d.id, period, payments))
-      ),
+      debts
+        .filter(
+          (d) =>
+            !d.archived && (isDebtActiveIn(d, period) || hasActivity(d.id))
+        )
+        .flatMap((d) =>
+          slotsForDebtInMonth(d, period, payments).map((sp) => ({
+            debt: d,
+            period: sp,
+          }))
+        ),
     [debts, period, payments]
   );
 
-  // deudas que existen pero no aplican ese mes y aún sin pago
-  const extra = useMemo(
-    () =>
-      debts.filter(
-        (d) =>
-          !d.archived &&
-          !isDebtActiveIn(d, period) &&
-          paidInPeriod(d.id, period, payments) === 0
-      ),
-    [debts, period, payments]
-  );
-
-  // al mostrar, excluir deudas que aún no han empezado (startDate futuro respecto a hoy)
-  // excepción: noStartDate siempre aparece en "Generar pagos"
+  // Deudas que no aplican ese mes y sin pago: aparecen solo con "Generar pagos".
   const extraVisible = useMemo(
-    () => extra.filter((d) => d.noStartDate || d.startDate.slice(0, 7) <= currentPeriod()),
-    [extra]
+    () =>
+      debts
+        .filter(
+          (d) =>
+            !d.archived &&
+            !isDebtActiveIn(d, period) &&
+            !hasActivity(d.id) &&
+            (d.noStartDate || d.startDate.slice(0, 7) <= currentPeriod())
+        )
+        .flatMap((d) => {
+          // sub-mensual: una fila por semana del mes; mensual: el mes completo
+          const slots = isSubMonthly(d)
+            ? occurrencesInMonth(d, period)
+            : [period];
+          return slots.map((sp) => ({ debt: d, period: sp }));
+        }),
+    [debts, period]
   );
 
   const shown = useMemo(
     () =>
-      [...(generated ? [...base, ...extraVisible] : base)].sort(
-        (a, b) => a.dueDay - b.dueDay
+      [...(generated ? [...base, ...extraVisible] : base)].sort((a, b) =>
+        slotDateOf(a.debt, a.period).localeCompare(slotDateOf(b.debt, b.period))
       ),
     [base, extraVisible, generated]
   );
 
   const expected = shown.reduce(
-    (s, d) =>
-      isSkippedInPeriod(d.id, period, payments)
+    (s, r) =>
+      isSkippedInPeriod(r.debt.id, r.period, payments)
         ? s
-        : s + (expectedAmount(d, period, payments) || d.amount),
+        : s + (expectedAmount(r.debt, r.period, payments) || r.debt.amount),
     0
   );
   const paid = totalPaid(period, payments);
@@ -112,8 +133,12 @@ export default function Payments() {
         <EmptyState title="No hay deudas para este mes" />
       ) : (
         <div className="flex flex-col gap-2">
-          {shown.map((d) => (
-            <PaymentRow key={d.id} debt={d} period={period} />
+          {shown.map((r) => (
+            <PaymentRow
+              key={`${r.debt.id}:${r.period}`}
+              debt={r.debt}
+              period={r.period}
+            />
           ))}
         </div>
       )}

@@ -5,8 +5,14 @@ import {
   expectedAmount,
   installmentsPaid,
   isDebtActiveIn,
+  isSubMonthly,
 } from "../lib/finance";
-import { currentPeriod, formatCOP, externalUrl } from "../lib/format";
+import {
+  currentPeriod,
+  formatCOP,
+  externalUrl,
+  WEEKDAYS_SHORT,
+} from "../lib/format";
 import { CategoryBadge, ProgressBar, EmptyState } from "../components/ui";
 import DebtForm from "../components/DebtForm";
 import InstallmentDetail from "../components/InstallmentDetail";
@@ -89,7 +95,12 @@ export default function Debts() {
                       <div className="font-bold truncate">{d.name}</div>
                       <div className="text-sm text-muted">
                         {formatCOP(expectedAmount(d, period) || d.amount)}
-                        {d.kind === "recurring" && " / mes"}
+                        {d.kind === "recurring" &&
+                          (d.frequency === "weekly"
+                            ? " / semana"
+                            : d.frequency === "biweekly"
+                            ? " / quincena"
+                            : " / mes")}
                       </div>
                     </div>
                   </div>
@@ -169,7 +180,10 @@ export default function Debts() {
                 )}
 
                 <div className="text-xs text-muted">
-                  Titular: {owner?.name ?? "—"} · vence día {d.dueDay}
+                  Titular: {owner?.name ?? "—"} ·{" "}
+                  {isSubMonthly(d)
+                    ? `vence los ${WEEKDAYS_SHORT[d.dueDay]}`
+                    : `vence día ${d.dueDay}`}
                   {d.interestRate ? ` · ${d.interestRate}% E.A.` : ""}
                 </div>
               </div>

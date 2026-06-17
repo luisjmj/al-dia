@@ -69,3 +69,19 @@ export function monthsBetween(a: string, b: string): number {
   const [by, bm] = b.split("-").map(Number);
   return (by - ay) * 12 + (bm - am);
 }
+
+// Mes "yyyy-mm" de cualquier periodo (mensual "yyyy-mm" o semanal "yyyy-mm-dd").
+export function monthOf(period: string): string {
+  return period.slice(0, 7);
+}
+
+// Nombres cortos de día de la semana, indexados por Date.getDay() (0=Dom).
+export const WEEKDAYS_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+// Etiqueta de un periodo semanal ("yyyy-mm-dd") -> "Vie 6". Null si es mensual.
+export function slotLabel(period: string): string | null {
+  if (period.length <= 7) return null;
+  const [y, m, d] = period.split("-").map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return `${WEEKDAYS_SHORT[dow]} ${d}`;
+}

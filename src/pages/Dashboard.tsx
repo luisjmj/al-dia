@@ -7,6 +7,8 @@ import {
   paidInPeriod,
   isSkippedInPeriod,
   projectNextMonths,
+  slotsForDebtInMonth,
+  slotDateOf,
 } from "../lib/finance";
 import { currentPeriod, formatCOP, periodLabel } from "../lib/format";
 import { StatCard, ProgressBar } from "../components/ui";
@@ -42,15 +44,28 @@ export default function Dashboard() {
   );
   const projNext = nextMonth?.total ?? 0;
 
-  // Próximas a vencer (no pagadas), ordenadas por día
-  const upcoming = active
-    .filter(
-      (d) =>
-        paidInPeriod(d.id, period, payments) === 0 &&
-        !isSkippedInPeriod(d.id, period, payments)
-    )
-    .sort((a, b) => a.dueDay - b.dueDay)
-    .slice(0, 5);
+  // Próximas a vencer (no pagadas), ordenadas por fecha. Las deudas
+  // semanales/quincenales se expanden en una fila por semana pendiente.
+  const upcoming = useMemo(() => {
+    const slots: { debt: (typeof active)[number]; period: string }[] = [];
+    for (const d of active) {
+      for (const sp of slotsForDebtInMonth(d, period, payments)) {
+        if (
+          paidInPeriod(d.id, sp, payments) === 0 &&
+          !isSkippedInPeriod(d.id, sp, payments)
+        ) {
+          slots.push({ debt: d, period: sp });
+        }
+      }
+    }
+    return slots
+      .sort((a, b) =>
+        slotDateOf(a.debt, a.period).localeCompare(
+          slotDateOf(b.debt, b.period)
+        )
+      )
+      .slice(0, 5);
+  }, [active, payments, period]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -123,8 +138,12 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {upcoming.map((d) => (
-              <PaymentRow key={d.id} debt={d} period={period} />
+            {upcoming.map((r) => (
+              <PaymentRow
+                key={`${r.debt.id}:${r.period}`}
+                debt={r.debt}
+                period={r.period}
+              />
             ))}
           </div>
         )}
