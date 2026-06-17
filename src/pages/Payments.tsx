@@ -10,6 +10,7 @@ import {
   occurrencesInMonth,
   slotsForDebtInMonth,
   slotDateOf,
+  weeklySlotVisible,
 } from "../lib/finance";
 import {
   addMonths,
@@ -106,10 +107,12 @@ export default function Payments() {
   const paid = totalPaid(period, payments);
   const canGenerate = isPast && !generated && extraVisible.length > 0;
 
-  // Semanas futuras sin pagar: ocultas por defecto para no saturar la lista.
+  // Semanas lejanas sin pagar: ocultas por defecto (la próxima ya se muestra
+  // sola si faltan ≤7 días o la anterior está pagada).
   const isFutureWeekly = (r: { debt: (typeof debts)[number]; period: string }) =>
     isSubMonthly(r.debt) &&
     slotDateOf(r.debt, r.period) > todayISO &&
+    !weeklySlotVisible(r.debt, r.period, payments) &&
     paidInPeriod(r.debt.id, r.period, payments) === 0 &&
     !isSkippedInPeriod(r.debt.id, r.period, payments);
 

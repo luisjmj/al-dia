@@ -9,6 +9,7 @@ import {
   projectNextMonths,
   slotsForDebtInMonth,
   slotDateOf,
+  weeklySlotVisible,
 } from "../lib/finance";
 import { currentPeriod, formatCOP, periodLabel } from "../lib/format";
 import { StatCard, ProgressBar } from "../components/ui";
@@ -52,7 +53,8 @@ export default function Dashboard() {
       for (const sp of slotsForDebtInMonth(d, period, payments)) {
         if (
           paidInPeriod(d.id, sp, payments) === 0 &&
-          !isSkippedInPeriod(d.id, sp, payments)
+          !isSkippedInPeriod(d.id, sp, payments) &&
+          weeklySlotVisible(d, sp, payments)
         ) {
           slots.push({ debt: d, period: sp });
         }

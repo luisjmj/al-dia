@@ -92,6 +92,34 @@ export function slotsForDebtInMonth(
   );
 }
 
+// ¿Se debe mostrar este slot semanal en "por pagar"?
+// Regla: la siguiente semana aparece solo cuando faltan ≤7 días para su
+// vencimiento, o cuando la semana anterior ya está pagada. Las vencidas y las
+// no sub-mensuales siempre se muestran.
+export function weeklySlotVisible(
+  debt: Debt,
+  period: string,
+  payments: Payment[]
+): boolean {
+  if (!isSubMonthly(debt) || period.length <= 7) return true;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [y, m, d] = period.split("-").map(Number);
+  const due = new Date(y, m - 1, d);
+  // dentro de 7 días (incluye vencidas: diferencia negativa)
+  if (due.getTime() - today.getTime() <= 7 * 86400000) return true;
+  // ¿la ocurrencia anterior está pagada?
+  const prev = new Date(due);
+  prev.setDate(due.getDate() - intervalDays(debt));
+  const prevISO = isoOf(prev);
+  return payments.some(
+    (p) =>
+      p.debtId === debt.id &&
+      p.period === prevISO &&
+      (p.type ?? "cuota") === "cuota"
+  );
+}
+
 // ¿La deuda está vigente (genera cobro) en este periodo?
 // `period` puede ser un mes ("yyyy-mm") o un slot semanal ("yyyy-mm-dd").
 export function isDebtActiveIn(debt: Debt, period: string): boolean {
