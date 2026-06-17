@@ -3,6 +3,7 @@ import { useStore } from "../store";
 import {
   isDebtActiveIn,
   isSkippedInPeriod,
+  paidInPeriod,
   totalPaid,
   expectedAmount,
   isSubMonthly,
@@ -26,9 +27,20 @@ export default function Payments() {
   const [period, setPeriod] = useState(currentPeriod());
   // en meses pasados se puede "generar" para incluir todas las deudas
   const [generated, setGenerated] = useState(false);
+  // las semanas futuras se ocultan por defecto (botón "Mostrar deudas semanales")
+  const [showWeekly, setShowWeekly] = useState(false);
 
-  // al cambiar de mes, se vuelve a ocultar lo generado
-  useEffect(() => setGenerated(false), [period]);
+  // al cambiar de mes, se vuelve a ocultar lo generado y las semanas futuras
+  useEffect(() => {
+    setGenerated(false);
+    setShowWeekly(false);
+  }, [period]);
+
+  const todayISO = (() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  })();
 
   const isPast = period < currentPeriod();
   const isFuture = period > currentPeriod();
@@ -94,6 +106,16 @@ export default function Payments() {
   const paid = totalPaid(period, payments);
   const canGenerate = isPast && !generated && extraVisible.length > 0;
 
+  // Semanas futuras sin pagar: ocultas por defecto para no saturar la lista.
+  const isFutureWeekly = (r: { debt: (typeof debts)[number]; period: string }) =>
+    isSubMonthly(r.debt) &&
+    slotDateOf(r.debt, r.period) > todayISO &&
+    paidInPeriod(r.debt.id, r.period, payments) === 0 &&
+    !isSkippedInPeriod(r.debt.id, r.period, payments);
+
+  const hiddenWeekly = shown.filter(isFutureWeekly);
+  const visible = showWeekly ? shown : shown.filter((r) => !isFutureWeekly(r));
+
   const hint = isPast
     ? 'Marca las deudas que pagaste este mes. Usa “Generar pagos” para incluir las demás.'
     : isFuture
@@ -129,11 +151,11 @@ export default function Payments() {
 
       <ProgressBar value={expected ? paid / expected : 0} color="#34d399" />
 
-      {shown.length === 0 && !canGenerate ? (
+      {visible.length === 0 && hiddenWeekly.length === 0 && !canGenerate ? (
         <EmptyState title="No hay deudas para este mes" />
       ) : (
         <div className="flex flex-col gap-2">
-          {shown.map((r) => (
+          {visible.map((r) => (
             <PaymentRow
               key={`${r.debt.id}:${r.period}`}
               debt={r.debt}
@@ -141,6 +163,20 @@ export default function Payments() {
             />
           ))}
         </div>
+      )}
+
+      {/* Mostrar / ocultar semanas futuras */}
+      {hiddenWeekly.length > 0 && (
+        <button
+          onClick={() => setShowWeekly((v) => !v)}
+          className="btn-ghost w-full !py-3"
+        >
+          <CalendarPlus className="w-4.5 h-4.5" />
+          {showWeekly ? "Ocultar semanas próximas" : "Mostrar deudas semanales"}
+          {!showWeekly && (
+            <span className="text-muted font-normal">({hiddenWeekly.length})</span>
+          )}
+        </button>
       )}
 
       {/* Generar pagos de un mes pasado */}
