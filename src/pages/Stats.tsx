@@ -4,6 +4,7 @@ import {
   projectNextMonths,
   totalExpected,
   isDebtActiveIn,
+  isCompleted,
 } from "../lib/finance";
 import {
   currentPeriod,
@@ -130,7 +131,7 @@ export default function Stats() {
   }, [payments, range]);
 
   const monthExpected = totalExpected(
-    debts.filter((d) => isDebtActiveIn(d, period)),
+    debts.filter((d) => isDebtActiveIn(d, period) && !isCompleted(d, payments)),
     period,
     payments
   );
@@ -147,7 +148,7 @@ export default function Stats() {
 
   // deuda más cara al año
   const priciest = [...debts]
-    .filter((d) => isDebtActiveIn(d, period))
+    .filter((d) => isDebtActiveIn(d, period) && !isCompleted(d, payments))
     .sort(
       (a, b) =>
         annualCost(b, period) - annualCost(a, period)

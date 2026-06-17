@@ -11,6 +11,7 @@ import {
   slotsForDebtInMonth,
   slotDateOf,
   weeklySlotVisible,
+  isCompleted,
 } from "../lib/finance";
 import {
   addMonths,
@@ -57,7 +58,9 @@ export default function Payments() {
       debts
         .filter(
           (d) =>
-            !d.archived && (isDebtActiveIn(d, period) || hasActivity(d.id))
+            !d.archived &&
+            ((isDebtActiveIn(d, period) && !isCompleted(d, payments)) ||
+              hasActivity(d.id))
         )
         .flatMap((d) =>
           slotsForDebtInMonth(d, period, payments).map((sp) => ({

@@ -10,6 +10,7 @@ import {
   slotsForDebtInMonth,
   slotDateOf,
   weeklySlotVisible,
+  isCompleted,
 } from "../lib/finance";
 import { currentPeriod, formatCOP, periodLabel } from "../lib/format";
 import { StatCard, ProgressBar } from "../components/ui";
@@ -31,8 +32,9 @@ export default function Dashboard() {
   const period = currentPeriod();
 
   const active = useMemo(
-    () => debts.filter((d) => isDebtActiveIn(d, period)),
-    [debts, period]
+    () =>
+      debts.filter((d) => isDebtActiveIn(d, period) && !isCompleted(d, payments)),
+    [debts, period, payments]
   );
   const expected = totalExpected(active, period, payments);
   const paid = totalPaid(period, payments);

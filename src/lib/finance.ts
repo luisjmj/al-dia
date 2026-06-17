@@ -206,6 +206,17 @@ export function installmentsPaid(debt: Debt, payments: Payment[]): number {
   ).length;
 }
 
+// ¿La deuda ya está completada (totalmente pagada)? Las recurrentes nunca.
+export function isCompleted(debt: Debt, payments: Payment[]): boolean {
+  if (debt.archived) return false;
+  if (debt.kind === "installments") {
+    const total = debt.installmentsTotal ?? 0;
+    return total > 0 && installmentsPaid(debt, payments) >= total;
+  }
+  if (debt.kind === "one_time") return installmentsPaid(debt, payments) >= 1;
+  return false; // recurrente: sin fin
+}
+
 // ¿Cuánto se ha pagado de una deuda en un periodo?
 export function paidInPeriod(
   debtId: string,
