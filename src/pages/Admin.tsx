@@ -4,6 +4,7 @@ import type { Category } from "../types";
 import { readableText } from "../lib/format";
 import { Icon } from "../components/ui";
 import NotificationSettings from "../components/NotificationSettings";
+import CurrencySettings from "../components/CurrencySettings";
 import { Plus, Trash2, Check, X } from "lucide-react";
 
 // Conjunto de íconos disponibles para elegir.
@@ -39,6 +40,8 @@ export default function Admin() {
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-2xl font-extrabold tracking-tight">Administración</h1>
+
+      <CurrencySettings />
 
       <NotificationSettings />
 

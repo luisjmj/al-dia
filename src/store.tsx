@@ -10,6 +10,7 @@ import type { Category, Debt, Payment, User } from "./types";
 import { SEED_USERS, SEED_DEBTS, buildSeedPayments, CATEGORIES } from "./lib/seed";
 import { paidInPeriod, expectedAmount } from "./lib/finance";
 import { addMonths } from "./lib/format";
+import { useCurrency } from "./lib/currency";
 
 const KEY = "aldia.v1";
 
@@ -71,6 +72,13 @@ export interface Store {
   // abono extra a capital en una deuda a cuotas
   abonarCapital: (debt: Debt, amount: number) => void;
   resetData: () => void;
+  // moneda(s) — solo front
+  currencies: string[];
+  activeCurrency: string;
+  setActiveCurrencyProfile: (code: string) => void;
+  setSingleCurrency: (code: string) => void;
+  addCurrency: (code: string) => void;
+  removeCurrency: (code: string) => void;
   // solo modo supabase (opcionales)
   household?: { id: string; name: string; inviteCode: string };
   signOut?: () => void;
@@ -91,6 +99,7 @@ export function saveTheme(t: "dark" | "light") {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Persisted>(load);
+  const cur = useCurrency();
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -105,16 +114,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     users.find((u) => u.id === state.currentUserId) ?? users[0];
 
   const api = useMemo<Store>(() => {
+    // En multi-moneda, cada "perfil" ve solo sus deudas/pagos (nada se unifica).
+    const scopedDebts = cur.multi
+      ? state.debts.filter((d) => cur.currencyOf(d.id) === cur.activeCurrency)
+      : state.debts;
+    const scopedPayments = cur.multi
+      ? state.payments.filter(
+          (p) => cur.currencyOf(p.debtId) === cur.activeCurrency
+        )
+      : state.payments;
     return {
       backend: "local",
       loading: false,
       users,
       currentUser,
       currentUserId: state.currentUserId,
-      debts: state.debts,
-      payments: state.payments,
+      debts: scopedDebts,
+      payments: scopedPayments,
       categories: state.categories,
       theme: state.theme,
+      currencies: cur.currencies,
+      activeCurrency: cur.activeCurrency,
+      setActiveCurrencyProfile: cur.setActiveCurrencyProfile,
+      setSingleCurrency: cur.setSingleCurrency,
+      addCurrency: cur.addCurrency,
+      removeCurrency: cur.removeCurrency,
       setCurrentUser: (id) =>
         setState((s) => ({ ...s, currentUserId: id })),
       toggleTheme: () =>
@@ -134,9 +158,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...s,
           categories: s.categories.filter((c) => c.id !== slug),
         })),
-      addDebt: (d, prepaidMonths) =>
+      addDebt: (d, prepaidMonths) => {
+        const id = `d_${crypto.randomUUID()}`;
+        cur.tagDebtCurrency(id, cur.activeCurrency);
         setState((s) => {
-          const id = `d_${crypto.randomUUID()}`;
           const extra: Payment[] = [];
           if (prepaidMonths && prepaidMonths > 0) {
             const startPeriod = d.startDate.slice(0, 7);
@@ -157,7 +182,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             debts: [...s.debts, { ...d, id }],
             payments: [...s.payments, ...extra],
           };
-        }),
+        });
+      },
       updateDebt: (d) =>
         setState((s) => ({
           ...s,
@@ -259,7 +285,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           theme: state.theme,
         }),
     };
-  }, [state, currentUser, users]);
+  }, [state, currentUser, users, cur]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

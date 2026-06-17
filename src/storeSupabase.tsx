@@ -12,9 +12,11 @@ import { useAuth } from "./auth";
 import * as repo from "./lib/repo";
 import { paidInPeriod, expectedAmount } from "./lib/finance";
 import { currentPeriod, addMonths } from "./lib/format";
+import { useCurrency } from "./lib/currency";
 
 export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
   const { userId, signOut } = useAuth();
+  const cur = useCurrency();
   const [loading, setLoading] = useState(true);
   const [household, setHousehold] = useState<repo.Household | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -64,16 +66,29 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
     ({ id: userId ?? "", name: "Yo", email: "", color: "#8184f8" } as User);
 
   const api = useMemo<Store>(() => {
+    // En multi-moneda cada perfil ve solo sus deudas/pagos (nada se unifica).
+    const scopedDebts = cur.multi
+      ? debts.filter((d) => cur.currencyOf(d.id) === cur.activeCurrency)
+      : debts;
+    const scopedPayments = cur.multi
+      ? payments.filter((p) => cur.currencyOf(p.debtId) === cur.activeCurrency)
+      : payments;
     return {
       backend: "supabase",
       loading,
       users,
       currentUser,
       currentUserId: userId ?? "",
-      debts,
-      payments,
+      debts: scopedDebts,
+      payments: scopedPayments,
       categories,
       theme,
+      currencies: cur.currencies,
+      activeCurrency: cur.activeCurrency,
+      setActiveCurrencyProfile: cur.setActiveCurrencyProfile,
+      setSingleCurrency: cur.setSingleCurrency,
+      addCurrency: cur.addCurrency,
+      removeCurrency: cur.removeCurrency,
       household: household
         ? { id: household.id, name: household.name, inviteCode: household.inviteCode }
         : undefined,
@@ -97,6 +112,7 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
       addDebt: async (d, prepaidMonths) => {
         if (!household) return;
         const created = await repo.insertDebt(d, household.id);
+        cur.tagDebtCurrency(created.id, cur.activeCurrency);
         setDebts((xs) => [...xs, created]);
         // registrar meses pasados ya pagados
         if (prepaidMonths && prepaidMonths > 0 && userId) {
@@ -206,7 +222,7 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     };
-  }, [loading, users, currentUser, userId, debts, payments, categories, theme, household, refresh, signOut]);
+  }, [loading, users, currentUser, userId, debts, payments, categories, theme, household, refresh, signOut, cur]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

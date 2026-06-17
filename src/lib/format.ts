@@ -1,20 +1,46 @@
 // Formato de moneda colombiana y fechas
 
-const cop = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  maximumFractionDigits: 0,
-});
+// Formateadores por moneda (cacheados). La moneda activa la fija el store vía
+// setActiveCurrency; no se convierten valores, solo cambia el símbolo/formato.
+let activeCode = "COP";
+const fmtCache = new Map<string, Intl.NumberFormat>();
 
-export function formatCOP(value: number): string {
-  return cop.format(Math.round(value));
+function fmtFor(code: string): Intl.NumberFormat {
+  let f = fmtCache.get(code);
+  if (!f) {
+    f = new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: code,
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+    });
+    fmtCache.set(code, f);
+  }
+  return f;
 }
 
-// Versión compacta para gráficas: $1,2M / $850k
+export function setActiveCurrency(code: string) {
+  activeCode = code || "COP";
+}
+
+// Símbolo de la moneda activa (para gráficas/etiquetas).
+export function activeSymbol(): string {
+  const part = fmtFor(activeCode)
+    .formatToParts(0)
+    .find((p) => p.type === "currency");
+  return part ? part.value : "$";
+}
+
+export function formatCOP(value: number): string {
+  return fmtFor(activeCode).format(Math.round(value));
+}
+
+// Versión compacta para gráficas: $1,2M / $850k (con el símbolo de la moneda activa)
 export function formatCompact(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `$${Math.round(value / 1_000)}k`;
-  return `$${Math.round(value)}`;
+  const s = activeSymbol();
+  if (Math.abs(value) >= 1_000_000) return `${s}${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `${s}${Math.round(value / 1_000)}k`;
+  return `${s}${Math.round(value)}`;
 }
 
 const MESES = [

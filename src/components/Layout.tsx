@@ -13,9 +13,11 @@ import {
   UserPlus,
   Settings,
   Power,
+  ChevronDown,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useStore } from "../store";
+import { currencyName } from "../lib/currency";
 
 const NAV = [
   { to: "/", label: "Inicio", icon: LayoutDashboard, end: true },
@@ -85,6 +87,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
           <div className="hidden md:block" />
           <div className="flex items-center gap-2">
+            <CurrencySwitcher />
             <NavLink
               to="/admin"
               className={({ isActive }) =>
@@ -144,6 +147,51 @@ export default function Layout({ children }: { children: ReactNode }) {
           </NavLink>
         ))}
       </nav>
+    </div>
+  );
+}
+
+// Selector de "perfil" de moneda. Solo aparece con más de una moneda activa.
+function CurrencySwitcher() {
+  const { currencies, activeCurrency, setActiveCurrencyProfile } = useStore();
+  const [open, setOpen] = useState(false);
+  if (currencies.length <= 1) return null;
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="btn-ghost !px-2.5 !py-2.5 text-sm font-bold flex items-center gap-1"
+        title="Cambiar moneda"
+      >
+        {activeCurrency}
+        <ChevronDown className="w-4 h-4" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1 z-40 w-52 card p-1 shadow-lg">
+            {currencies.map((code) => (
+              <button
+                key={code}
+                onClick={() => {
+                  setActiveCurrencyProfile(code);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between gap-2 ${
+                  code === activeCurrency
+                    ? "bg-brand-soft text-brand"
+                    : "hover:bg-surface-2 text-text"
+                }`}
+              >
+                <span className="font-bold">{code}</span>
+                <span className="text-xs text-muted truncate">
+                  {currencyName(code)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
