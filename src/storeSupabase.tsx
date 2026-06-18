@@ -97,6 +97,8 @@ export function SupabaseStoreProvider({ children }: { children: ReactNode }) {
       currentUserId: userId ?? "",
       debts: scopedDebts,
       payments: scopedPayments,
+      allDebts: debts,
+      allPayments: payments,
       categories,
       theme,
       currencies,

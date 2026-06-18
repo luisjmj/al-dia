@@ -55,6 +55,9 @@ export interface Store {
   currentUserId: string;
   debts: Debt[];
   payments: Payment[];
+  // sin filtrar por moneda activa (para el resumen multi-moneda)
+  allDebts: Debt[];
+  allPayments: Payment[];
   categories: Category[];
   theme: "dark" | "light";
   // acciones
@@ -141,6 +144,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       currentUserId: state.currentUserId,
       debts: scopedDebts,
       payments: scopedPayments,
+      allDebts: state.debts,
+      allPayments: state.payments,
       categories: state.categories,
       theme: state.theme,
       currencies: state.currencies,

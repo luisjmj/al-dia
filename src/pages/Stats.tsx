@@ -3,19 +3,22 @@ import { useStore } from "../store";
 import {
   projectNextMonths,
   totalExpected,
+  totalPaid,
   isDebtActiveIn,
   isCompleted,
 } from "../lib/finance";
 import {
   currentPeriod,
   formatCOP,
+  formatMoney,
   formatCompact,
   periodShort,
   periodLabel,
   addMonths,
   monthOf,
 } from "../lib/format";
-import { StatCard } from "../components/ui";
+import { currencyName } from "../lib/currency";
+import { StatCard, ProgressBar } from "../components/ui";
 import {
   BarChart,
   Bar,
@@ -40,8 +43,29 @@ const FILTER_OPTS = [
 ];
 
 export default function Stats() {
-  const { debts, payments, users, categories } = useStore();
+  const { debts, payments, users, categories, allDebts, allPayments, currencies } =
+    useStore();
   const period = currentPeriod();
+
+  // Resumen por moneda (solo si hay más de una): cuánto debes este mes y el
+  // progreso de pago para cada una. Usa los datos sin filtrar por perfil.
+  const base = currencies[0];
+  const currencySummary = useMemo(() => {
+    if (currencies.length <= 1) return [];
+    return currencies.map((code) => {
+      const dcs = allDebts.filter(
+        (d) => !d.archived && (d.currency ?? base) === code
+      );
+      const ids = new Set(dcs.map((d) => d.id));
+      const pcs = allPayments.filter((p) => ids.has(p.debtId));
+      const activeDebts = dcs.filter(
+        (d) => isDebtActiveIn(d, period) && !isCompleted(d, pcs)
+      );
+      const expected = totalExpected(activeDebts, period, pcs);
+      const paid = totalPaid(period, pcs);
+      return { code, expected, paid, ratio: expected ? paid / expected : 0 };
+    });
+  }, [currencies, allDebts, allPayments, base, period]);
   const [filter, setFilter] = useState("6m");
 
   const catBy = (id: string) =>
@@ -352,6 +376,41 @@ export default function Stats() {
           </div>
         </ChartCard>
       </div>
+
+      {/* Resumen por moneda (multi-moneda) */}
+      {currencySummary.length > 1 && (
+        <ChartCard
+          title="Resumen por moneda"
+          subtitle="Lo que debes este mes y tu avance en cada moneda"
+        >
+          <div className="flex flex-col gap-4 pt-1">
+            {currencySummary.map((c) => (
+              <div key={c.code}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold flex items-center gap-2">
+                    <span className="chip bg-surface-2 text-muted !px-2">
+                      {c.code}
+                    </span>
+                    <span className="text-sm text-muted">
+                      {currencyName(c.code)}
+                    </span>
+                  </span>
+                  <span className="text-sm">
+                    <span className="font-bold">
+                      {formatMoney(c.paid, c.code)}
+                    </span>
+                    <span className="text-muted">
+                      {" "}
+                      / {formatMoney(c.expected, c.code)}
+                    </span>
+                  </span>
+                </div>
+                <ProgressBar value={c.ratio} color="#34d399" />
+              </div>
+            ))}
+          </div>
+        </ChartCard>
+      )}
     </div>
   );
 }

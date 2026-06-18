@@ -35,6 +35,11 @@ export function formatCOP(value: number): string {
   return fmtFor(activeCode).format(Math.round(value));
 }
 
+// Formatea en una moneda específica (para resúmenes multi-moneda).
+export function formatMoney(value: number, code: string): string {
+  return fmtFor(code).format(Math.round(value));
+}
+
 // Versión compacta para gráficas: $1,2M / $850k (con el símbolo de la moneda activa)
 export function formatCompact(value: number): string {
   const s = activeSymbol();
