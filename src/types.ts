@@ -42,6 +42,7 @@ export interface Debt {
   url?: string; // enlace para "ir a pagar" (web del banco/servicio)
   noStartDate?: boolean; // solo recurring: siempre aplica (sin fecha de inicio)
   archived?: boolean;
+  currency?: string; // código ISO de la moneda (null/undefined = moneda base del hogar)
 }
 
 // Un pago marcado en un mes concreto.

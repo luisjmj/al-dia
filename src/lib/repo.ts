@@ -31,6 +31,7 @@ function rowToDebt(r: any): Debt {
     url: r.url ?? undefined,
     noStartDate: r.no_start_date ?? false,
     archived: r.archived,
+    currency: r.currency ?? undefined,
   };
 }
 
@@ -60,6 +61,8 @@ function debtToRow(d: Omit<Debt, "id">, householdId: string) {
   if (d.url) row.url = d.url;
   // `no_start_date` solo si true (columna de migración 006).
   if (d.noStartDate) row.no_start_date = true;
+  // `currency` solo si está definida (columna de migración 009).
+  if (d.currency) row.currency = d.currency;
   return row;
 }
 
@@ -106,6 +109,36 @@ export async function getActiveHousehold(userId: string): Promise<Household> {
   )[0] as any;
   const h = best.households;
   return { id: h.id, name: h.name, inviteCode: h.invite_code };
+}
+
+// Monedas habilitadas del hogar (compartidas con la pareja). Si la columna aún
+// no existe (migración 009 sin correr), cae a ["COP"].
+export async function getHouseholdCurrencies(
+  householdId: string
+): Promise<string[]> {
+  try {
+    const { data, error } = await sb()
+      .from("households")
+      .select("currencies")
+      .eq("id", householdId)
+      .single();
+    if (error) throw error;
+    const cs = (data as any)?.currencies;
+    return Array.isArray(cs) && cs.length ? cs : ["COP"];
+  } catch {
+    return ["COP"];
+  }
+}
+
+export async function updateHouseholdCurrencies(
+  householdId: string,
+  currencies: string[]
+): Promise<void> {
+  const { error } = await sb()
+    .from("households")
+    .update({ currencies })
+    .eq("id", householdId);
+  if (error) throw error;
 }
 
 export async function getMembers(householdId: string): Promise<User[]> {

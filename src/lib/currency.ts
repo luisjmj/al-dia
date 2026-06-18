@@ -35,80 +35,26 @@ export function currencyName(code: string): string {
   return CURRENCIES.find((c) => c.code === code)?.name ?? code;
 }
 
-const KEY = "aldia.currency";
+// La moneda ACTIVA (qué perfil estás viendo) es por dispositivo: localStorage.
+// Las monedas habilitadas y la moneda de cada deuda se guardan en la BD (hogar)
+// en modo nube, o en el estado local en modo local — eso lo manejan los stores.
+const ACTIVE_KEY = "aldia.activeCurrency";
 
-interface CurrencyState {
-  enabled: string[]; // monedas habilitadas (la 1ª es la base)
-  active: string; // perfil/moneda actualmente seleccionada
-  debtCurrency: Record<string, string>; // debtId -> moneda
-}
-
-const DEFAULT: CurrencyState = {
-  enabled: ["COP"],
-  active: "COP",
-  debtCurrency: {},
-};
-
-function load(): CurrencyState {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      return {
-        enabled: Array.isArray(p.enabled) && p.enabled.length ? p.enabled : ["COP"],
-        active: p.active || "COP",
-        debtCurrency: p.debtCurrency || {},
-      };
-    }
-  } catch {
-    /* ignore */
-  }
-  return DEFAULT;
-}
-
-export function useCurrency() {
-  const [s, setS] = useState<CurrencyState>(load);
+export function useActiveCurrency(
+  enabled: string[]
+): [string, (code: string) => void] {
+  const [stored, setStored] = useState<string>(
+    () => localStorage.getItem(ACTIVE_KEY) || enabled[0] || "COP"
+  );
+  // si la moneda guardada ya no está habilitada, cae a la base
+  const active = enabled.includes(stored) ? stored : enabled[0] || "COP";
 
   useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify(s));
-  }, [s]);
+    localStorage.setItem(ACTIVE_KEY, active);
+  }, [active]);
 
-  // Mantener el formateador global sincronizado con la moneda activa.
-  setActiveCurrency(s.active);
+  // mantener el formateador global sincronizado
+  setActiveCurrency(active);
 
-  const base = s.enabled[0];
-
-  return {
-    currencies: s.enabled,
-    activeCurrency: s.active,
-    base,
-    multi: s.enabled.length > 1,
-    currencyOf: (debtId: string) => s.debtCurrency[debtId] ?? base,
-    setActiveCurrencyProfile: (code: string) =>
-      setS((x) => ({ ...x, active: code })),
-    // modo una sola moneda: reemplaza todo
-    setSingleCurrency: (code: string) =>
-      setS((x) => ({ ...x, enabled: [code], active: code })),
-    addCurrency: (code: string) =>
-      setS((x) =>
-        x.enabled.includes(code) ? x : { ...x, enabled: [...x.enabled, code] }
-      ),
-    removeCurrency: (code: string) =>
-      setS((x) => {
-        if (x.enabled.length <= 1) return x;
-        const enabled = x.enabled.filter((c) => c !== code);
-        return {
-          ...x,
-          enabled,
-          active: x.active === code ? enabled[0] : x.active,
-        };
-      }),
-    tagDebtCurrency: (debtId: string, code: string) =>
-      setS((x) => ({
-        ...x,
-        debtCurrency: { ...x.debtCurrency, [debtId]: code },
-      })),
-  };
+  return [active, setStored];
 }
-
-export type CurrencyApi = ReturnType<typeof useCurrency>;

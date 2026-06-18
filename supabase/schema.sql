@@ -19,6 +19,7 @@ create table if not exists public.households (
   name        text not null default 'Mi hogar',
   invite_code text unique not null default substr(md5(random()::text), 1, 8),
   created_by  uuid references auth.users,
+  currencies  text[] not null default '{COP}',  -- monedas habilitadas (multi-moneda)
   created_at  timestamptz default now()
 );
 
@@ -50,6 +51,7 @@ create table if not exists public.debts (
   note               text,
   url                text,                             -- enlace para "ir a pagar"
   no_start_date      boolean not null default false,   -- recurrente sin fecha de inicio (siempre activa)
+  currency           text,                             -- moneda de la deuda (null = base del hogar)
   archived           boolean not null default false,
   created_at         timestamptz default now()
 );
